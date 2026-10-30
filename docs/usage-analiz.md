@@ -107,10 +107,31 @@ Bulut oturumlarında Claude, oturum sonunda kendi dökümünü aynı yöntemle a
 
 `to_summary_json()` bu dosyayı yazar, `parse_summary_json()` okur. `gruplar` dizisi yoksa okuma başarısız sayılır.
 
-## 3. Testler
+## 3. Grafik raporu
+
+Widget yazısına sol tıklanınca (veya menüde "Grafik raporunu aç" seçilince) ayrı bir thread şu adımları izler:
+
+1. Bu ayın ve 8 gün öncesinin CSV dosyalarını okur.
+2. `projects\*\*.jsonl` altındaki en yeni `[report] sessions` dökümü (varsayılan 30) seçer. Son 8 günden eski olanları alır, ama en yenisi her zaman listede kalır.
+3. Her dökümü önbellekte arar (`breakdown-cache.jsonl`, anahtar: yol + mtime + boyut). Bulamazsa satır satır okuyup analiz eder; subagent dökümlerini de ekler.
+4. `summary_dir` klasöründeki son 8 güne ait `*_usage.json` özetlerini "(bulut)" etiketiyle ekler.
+5. `report_html::render_html()` ile `%LOCALAPPDATA%\ClaudeUsageBar\report.html` dosyasını atomik olarak yazar ve varsayılan tarayıcıda açar. Süre ve sayılar log'a yazılır.
+
+| Bölüm | İçerik |
+|---|---|
+| Kartlar | Oturum ve hafta için şimdiki %, tempo farkı, reset zamanı, %100 tahmini; oturum → hafta kuru |
+| Sekmeler | **Son oturum** (son 5 sa / en yeni döküm) · **Bugün** (yerel gece yarısından beri) · **Bu hafta** (son 7 gün, varsayılan) |
+| Limit grafiği | Oturum % ve hafta % tek eksende (0–100). 20 dk'dan uzun boşluklarda çizgi kesilir. Fareyle üzerine gelince değer ve saat görünür |
+| Token dağılımı | Gruplar yatay çubuk olarak, efektif token ve pay ile |
+| Oturum tablosu | Bitiş, proje klasörü, istek, efektif, en büyük grup |
+
+Raporda betik yok, dış kaynak yüklenmiyor. Açık ve koyu temayı `prefers-color-scheme` ile otomatik izliyor. Analiz bittikten sonra bellekte kalıcı bir yapı tutulmuyor.
+
+## 4. Testler
 
 | Dosya | Kapsam |
 |---|---|
 | `tests/test_usage_math.cpp` | CSV gidiş-dönüş testi, başlık ve bozuk satır reddi, aylık dosya adı, başlığın yalnız bir kez yazılması, tempo, %100 tahmini (önceki pencere ve geç bitiş durumları), kur, ISO-UTC biçimi |
 | `tests/test_usage_breakdown.cpp` | Grup eşlemesi, istek sayımı ve sıfır-usage satırlarının atlanması, girdi/çıktı dağılımının elle hesaplanan değerlerle karşılaştırılması, compaction, subagent, özet JSON gidiş-dönüş testi |
+| `tests/test_report_html.cpp` | HTML kaçışı, token biçimi, oturum birleştirme, boş girdi, varsayılan sekme, proje adı kaçışı, 7 günden eski oturumun dışarıda kalması, betik olmaması |
 | `tests/fixtures/session_sample.jsonl` | Tamamen sentetik döküm. Yinelenen `message.id`, sıfır-usage satırı, bozuk satır, görsel içeren `tool_result` ve MCP aracı içerir |

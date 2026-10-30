@@ -40,7 +40,15 @@ constexpr const char* kDefaultIni =
     "auth=auto\r\n"
     "; 1 = refresh an expired Claude Code token (only while the Claude Code CLI is not running)\r\n"
     "oauth_refresh=1\r\n"
-    "org_id=\r\n";
+    "org_id=\r\n"
+    "\r\n"
+    "[report]\r\n"
+    "; 1 = log every successful query to usage-YYYY-MM.csv (numbers only)\r\n"
+    "csv_log=1\r\n"
+    "; newest Claude Code transcripts analysed when the chart opens (1-200)\r\n"
+    "sessions=30\r\n"
+    "; folder with cloud-session summaries (*_usage.json); empty = Documents\\Claude-Logs\r\n"
+    "summary_dir=\r\n";
 
 std::wstring get_str(const std::filesystem::path& ini, const wchar_t* sec, const wchar_t* key,
                      const wchar_t* def) {
@@ -104,6 +112,10 @@ Config load_config(const std::filesystem::path& ini) {
     }
     c.oauth_refresh = get_int(ini, L"fetch", L"oauth_refresh", 1) != 0;
     c.org_id = get_str(ini, L"fetch", L"org_id", L"");
+
+    c.csv_log = get_int(ini, L"report", L"csv_log", 1) != 0;
+    c.report_sessions = std::clamp(get_int(ini, L"report", L"sessions", c.report_sessions), 1, 200);
+    c.summary_dir = get_str(ini, L"report", L"summary_dir", L"");
     return c;
 }
 

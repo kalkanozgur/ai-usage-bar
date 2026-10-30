@@ -20,6 +20,9 @@ namespace cub::win {
 [[nodiscard]] std::filesystem::path exe_path();
 [[nodiscard]] std::filesystem::path local_app_data();
 [[nodiscard]] std::filesystem::path user_profile();
+[[nodiscard]] std::filesystem::path documents_dir();
+/// Claude Code's config folder: %CLAUDE_CONFIG_DIR%, else %USERPROFILE%\.claude
+[[nodiscard]] std::filesystem::path claude_config_dir();
 
 /// Reads a whole file as bytes; nullopt if it cannot be opened.
 [[nodiscard]] std::optional<std::string> read_file(const std::filesystem::path& p);

@@ -38,6 +38,7 @@ private:
     void hide();
     void show_menu();
     void paste_session_key();
+    void open_report();
     void toggle_autostart();
     [[nodiscard]] bool autostart_enabled() const;
     void update_theme();
@@ -82,6 +83,11 @@ private:
 
     std::thread worker_;
     std::atomic<bool> worker_done_{false};
+
+    // chart report (built on demand on a short-lived thread)
+    std::thread report_thread_;
+    std::atomic<bool> report_busy_{false};
+    std::atomic<bool> report_stop_{false};
 };
 
 }  // namespace cub::win

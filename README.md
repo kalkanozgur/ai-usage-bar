@@ -24,6 +24,7 @@ src/core/   Platformdan bağımsız mantık, Linux'ta da derlenir ve test edilir
   process_kind    claude.exe yolu → Desktop / CLI ayrımı
   usage_math      limit örnekleri: CSV satırı, tempo, %100 tahmini, oturum→hafta kuru
   usage_breakdown oturum dökümü (.jsonl) → token dağılımı (gruplar), oturum özeti JSON
+  report_html     tek dosyalık HTML rapor (inline SVG, betik yok)
 src/win/    Win32 katmanı
   app             pencere, 1 sn timer, menü, worker thread (condition_variable)
   renderer        UpdateLayeredWindow, per-pixel alpha, gri tonlamalı AA
@@ -32,6 +33,7 @@ src/win/    Win32 katmanı
   usage_fetcher   OAuth → yenileme → sessionKey akışı
   http_client     WinHTTP RAII, oturum boyunca bağlantı havuzu
   secret_store    DPAPI (CryptProtectData, kullanıcı kapsamı)
+  report_builder  CSV + döküm + özetleri toplar, report.html yazar (tıklanınca, arka planda)
   config / log / util
 tests/      GoogleTest, yalnızca core
 res/        manifest (PerMonitorV2 DPI, UTF-8), sürüm bilgisi (.rc)
@@ -62,6 +64,28 @@ MSYS2 UCRT64 için: `cmake --preset mingw-release`, `cmake --build --preset ming
 
 Hata ayıklama için `msvc-debug` preset'ini kullan.
 
+### Geliştirme döngüsü (GitHub)
+
+1. Her değişiklik ayrı bir branch'te yapılır ve PR olarak açılır. `main`'e doğrudan commit yapılmaz.
+2. Her PR'da CI iki işi çalıştırır:
+   - `windows-msvc`: MSVC ile derler, `ctest` çalıştırır, `claude-usage-bar.exe` artifact'ını üretir.
+   - `linux-core-tests`: core testleri Linux'ta çalıştırır.
+3. Derlenmiş `.exe` için: PR → **Checks** → CI → **Artifacts** → `claude-usage-bar`.
+4. Yerelde derleme hatası çıkarsa çıktıyı `build\` altına kaydet (klasör `.gitignore`'da). Claude bu dosyayı okuyup düzeltmeyi aynı branch'e push edebilir:
+   ```powershell
+   cmake --preset msvc-release
+   cmake --build --preset msvc-release 2>&1 | Tee-Object build\build.log
+   ctest --preset msvc-release 2>&1 | Tee-Object build\test.log
+   ```
+5. Yerel klasörü GitHub'a bağlamak için (bir kez):
+   ```powershell
+   git init -b main
+   git remote add origin https://github.com/kalkanozgur/ai-usage-bar.git
+   git fetch origin
+   git reset --mixed origin/main   # dosyalar yerinde kalır, geçmiş GitHub'dan gelir
+   git checkout feat/usage-report  # incelemek istediğin PR branch'i
+   ```
+
 ## VS Code
 
 1. Klasörü aç ve önerilen eklentileri kur (C/C++, CMake Tools, EditorConfig).
@@ -75,8 +99,10 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 ## Kullanım
 
 İlk çalıştırmada ayar dosyası `%LOCALAPPDATA%\ClaudeUsageBar\config.ini` oluşturulur. Fare kontrolleri:
-- **Sol tık:** claude.ai kullanım sayfasını açar.
+- **Sol tık:** grafik raporunu (`report.html`) oluşturur ve varsayılan tarayıcıda açar. Rapor yalnız tıklanınca hazırlanır; ayrıntı için [docs/usage-analiz.md](docs/usage-analiz.md).
 - **Sağ tık:** menüyü açar. En üst satır durum bilgisidir (kaynak, son güncelleme saati veya hata mesajı). Menüde şunlar var:
+  - Grafik raporunu aç
+  - Kullanım sayfasını aç (claude.ai)
   - Şimdi yenile
   - sessionKey'i panodan kaydet / sil
   - Windows ile başlat (HKCU\…\Run kaydına yazar)
@@ -105,6 +131,9 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 | `refresh_sec` | 180 | Sorgu aralığı (en az 30 sn) |
 | `auth` | `auto` | `oauth` veya `session` ile tek kaynağa sabitlenir |
 | `oauth_refresh` | 1 | 0 yapılırsa token yenilemesi kapanır |
+| `[report] csv_log` | 1 | Her başarılı sorguyu `usage-YYYY-MM.csv`'ye yazar (yalnız sayılar) |
+| `[report] sessions` | 30 | Rapor açılırken incelenen en yeni Claude Code dökümü sayısı (1–200) |
+| `[report] summary_dir` | — | Bulut oturum özetleri (`*_usage.json`) klasörü; boşsa `Belgeler\Claude-Logs` |
 
 ## Kullanım analizi
 
