@@ -64,6 +64,28 @@ MSYS2 UCRT64 için: `cmake --preset mingw-release`, `cmake --build --preset ming
 
 Hata ayıklama için `msvc-debug` preset'ini kullan.
 
+### Geliştirme döngüsü (GitHub)
+
+1. Her değişiklik ayrı bir branch'te yapılır ve PR olarak açılır. `main`'e doğrudan commit yapılmaz.
+2. Her PR'da CI iki işi çalıştırır:
+   - `windows-msvc`: MSVC ile derler, `ctest` çalıştırır, `claude-usage-bar.exe` artifact'ını üretir.
+   - `linux-core-tests`: core testleri Linux'ta çalıştırır.
+3. Derlenmiş `.exe` için: PR → **Checks** → CI → **Artifacts** → `claude-usage-bar`.
+4. Yerelde derleme hatası çıkarsa çıktıyı `build\` altına kaydet (klasör `.gitignore`'da). Claude bu dosyayı okuyup düzeltmeyi aynı branch'e push edebilir:
+   ```powershell
+   cmake --preset msvc-release
+   cmake --build --preset msvc-release 2>&1 | Tee-Object build\build.log
+   ctest --preset msvc-release 2>&1 | Tee-Object build\test.log
+   ```
+5. Yerel klasörü GitHub'a bağlamak için (bir kez):
+   ```powershell
+   git init -b main
+   git remote add origin https://github.com/kalkanozgur/ai-usage-bar.git
+   git fetch origin
+   git reset --mixed origin/main   # dosyalar yerinde kalır, geçmiş GitHub'dan gelir
+   git checkout feat/usage-report  # incelemek istediğin PR branch'i
+   ```
+
 ## VS Code
 
 1. Klasörü aç ve önerilen eklentileri kur (C/C++, CMake Tools, EditorConfig).
