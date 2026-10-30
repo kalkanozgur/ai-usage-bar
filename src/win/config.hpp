@@ -30,6 +30,11 @@ struct Config {
     AuthMode auth = AuthMode::Auto;
     bool oauth_refresh = true;  ///< refresh expired Claude Code tokens (only while the CLI is closed)
     std::wstring org_id;        ///< cached claude.ai organization uuid
+
+    // [report]
+    bool csv_log = true;          ///< append one CSV row per successful query
+    int report_sessions = 30;     ///< newest transcripts analysed for the report
+    std::wstring summary_dir;     ///< *_usage.json folder; empty → Documents\Claude-Logs
 };
 
 /// Loads the INI, writing a commented default file first if it does not exist.

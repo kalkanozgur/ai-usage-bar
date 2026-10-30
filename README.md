@@ -24,6 +24,7 @@ src/core/   Platformdan bağımsız mantık, Linux'ta da derlenir ve test edilir
   process_kind    claude.exe yolu → Desktop / CLI ayrımı
   usage_math      limit örnekleri: CSV satırı, tempo, %100 tahmini, oturum→hafta kuru
   usage_breakdown oturum dökümü (.jsonl) → token dağılımı (gruplar), oturum özeti JSON
+  report_html     tek dosyalık HTML rapor (inline SVG, betik yok)
 src/win/    Win32 katmanı
   app             pencere, 1 sn timer, menü, worker thread (condition_variable)
   renderer        UpdateLayeredWindow, per-pixel alpha, gri tonlamalı AA
@@ -32,6 +33,7 @@ src/win/    Win32 katmanı
   usage_fetcher   OAuth → yenileme → sessionKey akışı
   http_client     WinHTTP RAII, oturum boyunca bağlantı havuzu
   secret_store    DPAPI (CryptProtectData, kullanıcı kapsamı)
+  report_builder  CSV + döküm + özetleri toplar, report.html yazar (tıklanınca, arka planda)
   config / log / util
 tests/      GoogleTest, yalnızca core
 res/        manifest (PerMonitorV2 DPI, UTF-8), sürüm bilgisi (.rc)
@@ -75,8 +77,10 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 ## Kullanım
 
 İlk çalıştırmada ayar dosyası `%LOCALAPPDATA%\ClaudeUsageBar\config.ini` oluşturulur. Fare kontrolleri:
-- **Sol tık:** claude.ai kullanım sayfasını açar.
+- **Sol tık:** grafik raporunu (`report.html`) oluşturur ve varsayılan tarayıcıda açar. Rapor yalnız tıklanınca hazırlanır; ayrıntı için [docs/usage-analiz.md](docs/usage-analiz.md).
 - **Sağ tık:** menüyü açar. En üst satır durum bilgisidir (kaynak, son güncelleme saati veya hata mesajı). Menüde şunlar var:
+  - Grafik raporunu aç
+  - Kullanım sayfasını aç (claude.ai)
   - Şimdi yenile
   - sessionKey'i panodan kaydet / sil
   - Windows ile başlat (HKCU\…\Run kaydına yazar)
@@ -105,6 +109,9 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 | `refresh_sec` | 180 | Sorgu aralığı (en az 30 sn) |
 | `auth` | `auto` | `oauth` veya `session` ile tek kaynağa sabitlenir |
 | `oauth_refresh` | 1 | 0 yapılırsa token yenilemesi kapanır |
+| `[report] csv_log` | 1 | Her başarılı sorguyu `usage-YYYY-MM.csv`'ye yazar (yalnız sayılar) |
+| `[report] sessions` | 30 | Rapor açılırken incelenen en yeni Claude Code dökümü sayısı (1–200) |
+| `[report] summary_dir` | — | Bulut oturum özetleri (`*_usage.json`) klasörü; boşsa `Belgeler\Claude-Logs` |
 
 ## Kullanım analizi
 

@@ -74,6 +74,13 @@ std::filesystem::path known_folder(REFKNOWNFOLDERID id) {
 
 std::filesystem::path local_app_data() { return known_folder(FOLDERID_LocalAppData); }
 std::filesystem::path user_profile() { return known_folder(FOLDERID_Profile); }
+std::filesystem::path documents_dir() { return known_folder(FOLDERID_Documents); }
+
+std::filesystem::path claude_config_dir() {
+    wchar_t buf[MAX_PATH];
+    const DWORD n = GetEnvironmentVariableW(L"CLAUDE_CONFIG_DIR", buf, MAX_PATH);
+    return (n > 0 && n < MAX_PATH) ? std::filesystem::path(buf) : user_profile() / L".claude";
+}
 
 std::optional<std::string> read_file(const std::filesystem::path& p) {
     std::ifstream in(p, std::ios::binary);

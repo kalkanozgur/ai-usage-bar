@@ -40,12 +40,7 @@ UsageFetcher::UsageFetcher(Config cfg, AppPaths paths)
       org_id_(cfg_.org_id) {}
 
 std::filesystem::path UsageFetcher::credentials_path() const {
-    // Claude Code honours CLAUDE_CONFIG_DIR; default is %USERPROFILE%\.claude
-    wchar_t buf[MAX_PATH];
-    const DWORD n = GetEnvironmentVariableW(L"CLAUDE_CONFIG_DIR", buf, MAX_PATH);
-    const std::filesystem::path dir =
-        (n > 0 && n < MAX_PATH) ? std::filesystem::path(buf) : user_profile() / L".claude";
-    return dir / L".credentials.json";
+    return claude_config_dir() / L".credentials.json";
 }
 
 FetchResult UsageFetcher::fetch() {
