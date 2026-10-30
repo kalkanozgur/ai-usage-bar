@@ -80,6 +80,8 @@ efektif = input + 0.1 × cache_read + 2 × cache_creation + 5 × output
 | Bağlantı: `<sunucu>` | Diğer `mcp__<sunucu>__*` araçları. Sunucu adı rastgele bir ID ise (≥16 karakter, yalnız hex ve `-`) bunun yerine araç adı kullanılır |
 | Konuşma/diğer | Kalan her şey |
 
+Rapor `language=en` iken gruplar İngilizce gösterilir (`i18n::group_label`), `language=tr` iken dahili Türkçe adlarıyla: Claude instructions, Built-in browser, Claude in Chrome, Computer use, Web, Files/shell, Skills, Tool loading, Subagents, Connector: `<sunucu>`, Conversation/other. Dahili kimlikler Türkçe kalır; böylece önbellek ve `*_usage.json` dosyaları uyumlu kalır.
+
 Gruplar ilk eşleşmeden itibaren yukarıdan aşağıya sırayla denenir (`Claude_Browser__computer` → Yerleşik tarayıcı).
 
 ### Oturum özeti şeması (`*_usage.json`)
@@ -110,7 +112,7 @@ Bulut oturumlarında Claude, oturum sonunda kendi dökümünü aynı yöntemle a
 
 ## 3. Grafik raporu
 
-Widget yazısına sol tıklanınca (veya menüde "Grafik raporunu aç" seçilince) ayrı bir thread şu adımları izler:
+Widget yazısına sol tıklanınca (veya menüde "Open usage report" seçilince) ayrı bir thread şu adımları izler:
 
 1. Bu ayın ve 8 gün öncesinin CSV dosyalarını okur.
 2. `projects\*\*.jsonl` altındaki en yeni `[report] sessions` dökümü (varsayılan 30) seçer. Son 8 günden eski olanları alır, ama en yenisi her zaman listede kalır.
@@ -121,7 +123,7 @@ Widget yazısına sol tıklanınca (veya menüde "Grafik raporunu aç" seçilinc
 | Bölüm | İçerik |
 |---|---|
 | Kartlar | Oturum ve hafta için şimdiki %, tempo farkı, reset zamanı, %100 tahmini; oturum → hafta kuru |
-| Sekmeler | **Son oturum** (son 5 sa / en yeni döküm) · **Bugün** (yerel gece yarısından beri) · **Bu hafta** (son 7 gün, varsayılan) |
+| Sekmeler | **Last session** (son 5 sa / en yeni döküm) · **Today** (yerel gece yarısından beri) · **This week** (son 7 gün, varsayılan) |
 | Limit grafiği | Oturum % ve hafta % tek eksende (0–100). 20 dk'dan uzun boşluklarda çizgi kesilir. Fareyle gezinince kesikli dikey imleç en yakın örneğe oturur; ipucunda saat, oturum % ve hafta % birlikte görünür (en çok 480 nokta gömülür) |
 | Token dağılımı | Gruplar yatay çubuk olarak, efektif token ve pay ile |
 | Oturum tablosu | Bitiş, proje klasörü, istek, efektif, en büyük grup |

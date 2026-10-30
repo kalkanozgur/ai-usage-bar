@@ -33,10 +33,10 @@ TEST(Report, EscapesHtml) {
 
 TEST(Report, FormatsTokens) {
     EXPECT_EQ(r::format_tokens(812), "812");
-    EXPECT_EQ(r::format_tokens(8120), "8,12 K");
-    EXPECT_EQ(r::format_tokens(81200), "81,2 K");
-    EXPECT_EQ(r::format_tokens(3040000), "3,04 M");
-    EXPECT_EQ(r::format_tokens(30400000), "30,4 M");
+    EXPECT_EQ(r::format_tokens(8120), "8.12 K");
+    EXPECT_EQ(r::format_tokens(81200), "81.2 K");
+    EXPECT_EQ(r::format_tokens(3040000), "3.04 M");
+    EXPECT_EQ(r::format_tokens(30400000), "30.4 M");
 }
 
 TEST(Report, MergesSessions) {
@@ -57,7 +57,8 @@ TEST(Report, RendersEmptyInput) {
     EXPECT_TRUE(has(html, "<!doctype html>"));
     EXPECT_TRUE(has(html, "id=\"v-week\" checked"));
     EXPECT_FALSE(has(html, "id=\"v-day\" checked"));
-    EXPECT_TRUE(has(html, "limit \xC3\xB6rne\xC4\x9Fi yok"));
+    EXPECT_TRUE(has(html, "No limit samples in this range"));
+    EXPECT_TRUE(has(html, "<html lang=\"en\">"));
     EXPECT_FALSE(has(html, "<script src"));  // inline only, nothing loaded from outside
     EXPECT_FALSE(has(html, "http://"));
 }
@@ -82,12 +83,47 @@ TEST(Report, RendersSeriesBreakdownAndEscapedProjects) {
     const std::string html = r::render_html(in);
     EXPECT_TRUE(has(html, "id=\"v-day\" checked"));
     EXPECT_TRUE(has(html, "<path class=\"line\""));
-    EXPECT_TRUE(has(html, "Oturum %29"));                 // direct label of the last sample
+    EXPECT_TRUE(has(html, "Session 29%"));                // direct label of the last sample
     EXPECT_TRUE(has(html, "E--Projects-&lt;x&gt;"));     // project names are escaped
     EXPECT_FALSE(has(html, "E--Projects-<x>"));
-    EXPECT_TRUE(has(html, std::string(bd::group::kInstructions)));
-    EXPECT_TRUE(has(html, "Tempo:"));
+    EXPECT_TRUE(has(html, "Claude instructions"));       // group ids are shown in English
+    EXPECT_FALSE(has(html, std::string(bd::group::kInstructions)));
+    EXPECT_TRUE(has(html, "Pace:"));
+    EXPECT_TRUE(has(html, "Fri 30 Oct"));                // English weekday/month labels
     EXPECT_TRUE(has(html, "class=\"xh\""));                       // hover crosshair
     EXPECT_TRUE(has(html, "data-p=\"[[" + std::to_string(in.now - 3600) + ",10.0,40.0]"));
     EXPECT_FALSE(has(html, ">old<"));                    // 9-day-old session is not listed
+}
+
+TEST(Report, GroupLabelsInEnglish) {
+    using cub::i18n::group_label;
+    using cub::i18n::Lang;
+    EXPECT_EQ(group_label(Lang::En, bd::group::kInstructions), "Claude instructions");
+    EXPECT_EQ(group_label(Lang::En, bd::group::kFiles), "Files/shell");
+    EXPECT_EQ(group_label(Lang::En, bd::group::kScreen), "Computer use");
+    EXPECT_EQ(group_label(Lang::En, "Ba\xC4\x9Flant\xC4\xB1: memory"), "Connector: memory");
+    EXPECT_EQ(group_label(Lang::En, "Something new"), "Something new");
+    EXPECT_EQ(group_label(Lang::Tr, bd::group::kFiles), bd::group::kFiles);  // ids are Turkish
+}
+
+TEST(Report, RendersTurkish) {
+    r::Input in;
+    in.now = 1793383200;
+    in.utc_offset_sec = 3 * 3600;
+    in.lang = cub::i18n::Lang::Tr;
+    u::Sample s;
+    s.ts = in.now - 60;
+    s.session_pct = 71.0;
+    s.session_reset = in.now + 3600;
+    in.samples.push_back(s);
+    in.sessions.push_back(session("p", in.now - 60, 300, 100));
+    const std::string html = r::render_html(in);
+    EXPECT_TRUE(has(html, "<html lang=\"tr\">"));
+    EXPECT_TRUE(has(html, "Bu hafta"));
+    EXPECT_TRUE(has(html, "Oturum %71"));
+    EXPECT_TRUE(has(html, "Cum 30 Eki"));
+    EXPECT_TRUE(has(html, std::string(bd::group::kInstructions)));
+    EXPECT_TRUE(has(html, "tr:true"));
+    EXPECT_FALSE(has(html, "This week"));
+    EXPECT_EQ(r::format_tokens(81200, cub::i18n::Lang::Tr), "81,2 K");
 }

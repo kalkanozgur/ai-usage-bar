@@ -89,3 +89,11 @@ TEST(Display, ThresholdModeIgnoresPace) {
     EXPECT_EQ(display::level_for_window({75.0, now + 9000}, 18'000, now, opt),
               display::Level::Warn);
 }
+
+TEST(Display, FormatsTurkish) {
+    display::Options opt;
+    opt.lang = i18n::Lang::Tr;
+    const auto lines = display::format(sample(1000), 1000, opt, false);
+    EXPECT_EQ(lines.line1, "Oturum %23 \xC2\xB7 2s14dk");
+    EXPECT_EQ(lines.line2, "Hafta %81 \xC2\xB7 3g05s");
+}

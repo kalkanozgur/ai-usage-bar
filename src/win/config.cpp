@@ -15,6 +15,8 @@ constexpr const char* kDefaultIni =
     "; Claude Usage Bar settings. Changes are applied on restart.\r\n"
     "\r\n"
     "[display]\r\n"
+    "; en | tr  (taskbar, menu and report language)\r\n"
+    "language=en\r\n"
     "; right | left | primary | 0,1,2... (monitor index, ordered left to right)\r\n"
     "monitor=right\r\n"
     "; gap between the text and the notification area, in physical pixels\r\n"
@@ -84,6 +86,8 @@ Config load_config(const std::filesystem::path& ini) {
     }
 
     Config c;
+    const std::wstring lang = get_str(ini, L"display", L"language", L"en");
+    c.lang = (lang == L"tr" || lang == L"TR") ? i18n::Lang::Tr : i18n::Lang::En;
     const std::wstring mon = get_str(ini, L"display", L"monitor", L"right");
     if (mon == L"left") {
         c.monitor = Config::MonitorSel::Left;

@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <string>
 
+#include "core/i18n.hpp"
+
 namespace cub::win {
 
 struct Config {
@@ -12,6 +14,7 @@ struct Config {
     enum class AuthMode { Auto, OAuth, Session };
 
     // [display]
+    i18n::Lang lang = i18n::Lang::En;  ///< language=en|tr (taskbar, menu, report)
     MonitorSel monitor = MonitorSel::Right;
     int monitor_index = 0;
     int gap_px = 8;
