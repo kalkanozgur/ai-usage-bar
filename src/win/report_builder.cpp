@@ -207,17 +207,6 @@ void prune_csv(const AppPaths& paths, int keep_months) {
     }
 }
 
-std::vector<usage::Sample> recent_samples(const AppPaths& paths, std::int64_t now,
-                                          std::int64_t window_sec) {
-    std::vector<usage::Sample> out;
-    for (const auto& s : load_samples(paths, now)) {
-        if (s.ts >= now - window_sec) {
-            out.push_back(s);
-        }
-    }
-    return out;
-}
-
 fs::path report_path(const AppPaths& paths) { return paths.data_dir / L"report.html"; }
 
 fs::path csv_path(const AppPaths& paths, std::int64_t unix_s) {

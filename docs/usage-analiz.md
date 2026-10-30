@@ -128,9 +128,9 @@ Widget yazısına sol tıklanınca (veya menüde "Grafik raporunu aç" seçilinc
 
 Raporda yalnız imleç için küçük bir inline betik var, dışarıdan hiçbir şey yüklenmiyor. Betik ipucuna yalnız `data-p` içindeki sayıları yazıyor.
 
-### Widget ipucu
+### Widget ipucu (rafta)
 
-Fare widget yazısının üzerine gelince `display::tooltip()` metni gösterilir. Tempo ve reset bilgisi son API yanıtından gelir. Oturumun %100 tahmini ise bellekte tutulan son 6 saatlik örneklerden hesaplanır; bu tampon açılışta bu ayın CSV'sinden doldurulur. Açık ve koyu temayı `prefers-color-scheme` ile otomatik izliyor. Analiz bittikten sonra bellekte kalıcı bir yapı tutulmuyor.
+Fare üzerindeyken tempo/reset/%100 tahmini gösteren ipucu, widget RAM hedefini (~2–3 MB) korumak için `main`'den çıkarıldı (comctl32 + ipucu penceresi + örnek tamponu). Kod `shelf/widget-tooltip` branch'inde duruyor; aynı bilgiler raporun kartlarında var.
 
 ## 4. Testler
 

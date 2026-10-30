@@ -1,7 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <vector>
-
 #include "core/display.hpp"
 
 using namespace cub;
@@ -53,32 +51,4 @@ TEST(Display, Thresholds) {
     EXPECT_EQ(display::level_for(74.9, opt), display::Level::Normal);
     EXPECT_EQ(display::level_for(75.0, opt), display::Level::Warn);
     EXPECT_EQ(display::level_for(90.0, opt), display::Level::Critical);
-}
-
-TEST(Display, TooltipShowsPaceResetAndProjection) {
-    const std::int64_t now = 1793383200;  // 21:00 TSİ
-    cub::api::UsageSnapshot snap;
-    snap.five_hour = cub::api::UsageWindow{60.0, now + 9000};          // half the window left
-    snap.seven_day = cub::api::UsageWindow{10.0, now + 3 * 86400};
-    std::vector<cub::usage::Sample> recent;
-    for (int i = 0; i < 3; ++i) {
-        cub::usage::Sample s;
-        s.ts = now - 1200 + i * 600;
-        s.session_pct = 40.0 + i * 10.0;  // 1 point per minute → 100 % in 40 min
-        s.session_reset = now + 9000;
-        recent.push_back(s);
-    }
-    const std::string t = cub::display::tooltip(snap, recent, now, 3 * 3600);
-    EXPECT_NE(t.find("Oturum %60 \xC2\xB7 tempo 10 puan \xC3\xB6nde (beklenen %50)"),
-              std::string::npos);
-    EXPECT_NE(t.find("Reset 23:30 (2s30dk) \xC2\xB7 %100 tahmini 21:40"), std::string::npos);
-    EXPECT_NE(t.find("Hafta %10 \xC2\xB7 tempo"), std::string::npos);
-    EXPECT_NE(t.find("Reset Pzt 21:00"), std::string::npos);
-    EXPECT_NE(t.find("Sol t\xC4\xB1k: grafik raporu"), std::string::npos);
-}
-
-TEST(Display, TooltipWithoutData) {
-    const std::string t = cub::display::tooltip({}, {}, 0, 0);
-    EXPECT_NE(t.find("Oturum \xE2\x80\x94"), std::string::npos);
-    EXPECT_NE(t.find("Hafta \xE2\x80\x94"), std::string::npos);
 }
