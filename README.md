@@ -22,6 +22,8 @@ src/core/   Platformdan bağımsız mantık, Linux'ta da derlenir ve test edilir
   credentials     .credentials.json ayrıştırma ve 3 alanı byte-korumalı yamalama
   display         snapshot → iki satır + renk seviyesi
   process_kind    claude.exe yolu → Desktop / CLI ayrımı
+  usage_math      limit örnekleri: CSV satırı, tempo, %100 tahmini, oturum→hafta kuru
+  usage_breakdown oturum dökümü (.jsonl) → token dağılımı (gruplar), oturum özeti JSON
 src/win/    Win32 katmanı
   app             pencere, 1 sn timer, menü, worker thread (condition_variable)
   renderer        UpdateLayeredWindow, per-pixel alpha, gri tonlamalı AA
@@ -104,9 +106,13 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 | `auth` | `auto` | `oauth` veya `session` ile tek kaynağa sabitlenir |
 | `oauth_refresh` | 1 | 0 yapılırsa token yenilemesi kapanır |
 
+## Kullanım analizi
+
+Limit zaman serisi (CSV) ve oturum dökümlerinden token dağılımı: format, formüller ve gruplar için [docs/usage-analiz.md](docs/usage-analiz.md).
+
 ## Güvenlik
 
-- Token, sessionKey ve istek başlıkları log'a yazılmaz. Kullanılan bellek tamponları `SecureZeroMemory` ile temizlenir.
+- Token, sessionKey ve istek başlıkları log'a yazılmaz. Kullanım analizi dökümlerden yalnız sayıları ve araç adlarını okur; mesaj metni saklanmaz. Kullanılan bellek tamponları `SecureZeroMemory` ile temizlenir.
 - `session.bin` DPAPI ile şifrelidir; başka bir kullanıcı veya başka bir makine çözemez.
 - `.gitignore` dosyası `session.bin`, `*.cub-backup` ve `*.log` dosyalarını hariç tutar.
 

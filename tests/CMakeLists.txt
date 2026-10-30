@@ -16,8 +16,12 @@ add_executable(cub_tests
     test_display.cpp
     test_json.cpp
     test_process_kind.cpp
-    test_time.cpp)
+    test_time.cpp
+    test_usage_breakdown.cpp
+    test_usage_math.cpp)
 target_link_libraries(cub_tests PRIVATE cub_core GTest::gtest_main)
+target_compile_definitions(cub_tests PRIVATE
+    CUB_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 cub_enable_warnings(cub_tests)
 
 include(GoogleTest)
