@@ -111,7 +111,7 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
   - Open settings file / Open log file
   - Exit
 
-  Arayüz (taskbar, menü, rapor) İngilizce; bu doküman Türkçe.
+  Arayüz dili `config.ini` → `[display] language=en|tr` ile seçilir (varsayılan `en`; taskbar, menü, mesajlar ve rapor birlikte değişir). Bu doküman Türkçe; menü adları İngilizce arayüze göre yazıldı.
 
 ### Kimlik doğrulama
 
@@ -132,6 +132,7 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 | `manual_right_px` | -1 | ≥0 ise otomatik tespiti ezer |
 | `visibility` | `desktop_window` | `desktop_process`: tepsiye küçültülmüşken de göster. `always`: Desktop'tan bağımsız hep göster. |
 | `desktop_path_hint` | — | Desktop standart dışı bir klasöre kuruluysa exe yolunun bir parçası |
+| `language` | `en` | Arayüz dili: `en` veya `tr` (taskbar, menü, mesajlar, rapor) |
 | `color_mode` | `pace` | `pace` (tempoya göre) veya `threshold` (`warn_pct` eşiği) |
 | `pace_margin` | 5 | Turuncu için eşit dağılımın kaç puan önünde olmak gerekir |
 | `pace_min_pct` | 25 | Bunun altındaki kullanımda tempo uyarısı verilmez (pencere başı gürültüsü) |

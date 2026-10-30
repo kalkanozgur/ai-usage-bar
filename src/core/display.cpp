@@ -11,20 +11,20 @@ namespace {
 constexpr const char* kSep = " \xC2\xB7 ";  // " · "
 constexpr const char* kDash = "\xE2\x80\x94";  // "—"
 
-std::string pct_text(double pct) {
-    return std::to_string(std::lround(pct)) + "%";
+std::string pct_text(i18n::Lang lang, double pct) {
+    return i18n::pct(lang, static_cast<double>(std::lround(pct)));
 }
 
-std::string window_text(const char* label, const std::optional<api::UsageWindow>& w,
+std::string window_text(i18n::Lang lang, i18n::S label, const std::optional<api::UsageWindow>& w,
                         std::int64_t now) {
-    std::string s = label;
+    std::string s = i18n::t(lang, label);
     s += ' ';
     if (!w) {
         return s + kDash;
     }
-    s += pct_text(w->utilization);
+    s += pct_text(lang, w->utilization);
     s += kSep;
-    s += w->resets_at ? time::format_remaining_en(*w->resets_at - now) : kDash;
+    s += w->resets_at ? i18n::remaining(lang, *w->resets_at - now) : kDash;
     return s;
 }
 
@@ -57,11 +57,11 @@ Level level_for_window(const api::UsageWindow& w, std::int64_t window_sec, std::
 
 Lines format(const api::UsageSnapshot& snap, std::int64_t now, const Options& opt, bool stale) {
     Lines out;
-    out.line1 = window_text("Session", snap.five_hour, now);
-    out.line2 = window_text("Week", snap.seven_day, now);
+    out.line1 = window_text(opt.lang, i18n::S::Session, snap.five_hour, now);
+    out.line2 = window_text(opt.lang, i18n::S::Week, snap.seven_day, now);
     if (opt.show_sonnet && snap.seven_day_sonnet) {
         out.line2 += kSep;
-        out.line2 += "S " + pct_text(snap.seven_day_sonnet->utilization);
+        out.line2 += "S " + pct_text(opt.lang, snap.seven_day_sonnet->utilization);
     }
     if (stale) {
         out.level1 = out.level2 = Level::Dim;

@@ -13,10 +13,12 @@
 
 #include "core/api.hpp"
 #include "core/display.hpp"
+#include "core/i18n.hpp"
 #include "win/config.hpp"
 #include "win/process_watch.hpp"
 #include "win/renderer.hpp"
 #include "win/usage_fetcher.hpp"
+#include "win/util.hpp"
 
 namespace cub::win {
 
@@ -39,6 +41,8 @@ private:
     void show_menu();
     void paste_session_key();
     void open_report();
+    /// UI string in the configured language, as UTF-16.
+    [[nodiscard]] std::wstring tw(i18n::S key) const { return to_wide(i18n::t(cfg_.lang, key)); }
     void toggle_autostart();
     [[nodiscard]] bool autostart_enabled() const;
     void update_theme();

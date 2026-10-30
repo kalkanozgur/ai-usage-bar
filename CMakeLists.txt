@@ -28,6 +28,7 @@ add_library(cub_core STATIC
     src/core/api.cpp
     src/core/credentials.cpp
     src/core/display.cpp
+    src/core/i18n.cpp
     src/core/json_lite.cpp
     src/core/process_kind.cpp
     src/core/report_html.cpp

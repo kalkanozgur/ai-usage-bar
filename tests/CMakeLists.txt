@@ -14,6 +14,7 @@ add_executable(cub_tests
     test_api.cpp
     test_credentials.cpp
     test_display.cpp
+    test_i18n.cpp
     test_json.cpp
     test_process_kind.cpp
     test_report_html.cpp

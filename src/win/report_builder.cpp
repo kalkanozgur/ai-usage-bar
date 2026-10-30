@@ -148,7 +148,7 @@ std::vector<Transcript> list_transcripts(std::size_t max_count) {
     return all;
 }
 
-void load_summaries(const fs::path& dir, std::vector<breakdown::Result>& out) {
+void load_summaries(const fs::path& dir, i18n::Lang lang, std::vector<breakdown::Result>& out) {
     std::error_code ec;
     const auto cutoff = fs::file_time_type::clock::now() - kLookback;
     for (const auto& f : fs::directory_iterator(dir, ec)) {
@@ -163,7 +163,8 @@ void load_summaries(const fs::path& dir, std::vector<breakdown::Result>& out) {
             continue;
         }
         if (auto r = breakdown::parse_summary_json(*text)) {
-            r->project = r->project.empty() ? "(cloud)" : r->project + " (cloud)";
+            const std::string cloud = i18n::t(lang, i18n::S::Cloud);
+            r->project = r->project.empty() ? cloud : r->project + " " + cloud;
             out.push_back(std::move(*r));
         }
     }
@@ -220,6 +221,7 @@ bool build_report(const AppPaths& paths, const Config& cfg, const std::atomic<bo
     in.now = now_unix_s();
     in.utc_offset_sec = utc_offset_sec();
     in.default_view = report::View::Week;
+    in.lang = cfg.lang;
     in.samples = load_samples(paths, in.now);
 
     const fs::path cache_file = paths.data_dir / L"breakdown-cache.jsonl";
@@ -246,7 +248,7 @@ bool build_report(const AppPaths& paths, const Config& cfg, const std::atomic<bo
 
     const fs::path summaries =
         cfg.summary_dir.empty() ? documents_dir() / L"Claude-Logs" : fs::path(cfg.summary_dir);
-    load_summaries(summaries, in.sessions);
+    load_summaries(summaries, cfg.lang, in.sessions);
 
     if (!write_file_atomic(report_path(paths), report::render_html(in))) {
         error = "report.html yazilamadi: " + error_text(GetLastError());

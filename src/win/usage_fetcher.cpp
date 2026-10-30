@@ -14,6 +14,8 @@
 namespace cub::win {
 namespace {
 
+#define L_(key) i18n::t(cfg_.lang, i18n::S::key)
+
 // Public OAuth client of Claude Code; the token we refresh was issued to it.
 constexpr std::string_view kClaudeCodeClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
 constexpr std::array<const wchar_t*, 2> kTokenHosts = {L"platform.claude.com",
@@ -75,12 +77,12 @@ FetchResult UsageFetcher::fetch() {
 std::optional<api::UsageSnapshot> UsageFetcher::fetch_oauth(std::string& err) {
     const auto text = read_file(credentials_path());
     if (!text) {
-        err = "OAuth: not signed in to Claude Code";
+        err = L_(ErrOAuthNoLogin);
         return std::nullopt;
     }
     auto creds = credentials::parse(*text);
     if (!creds) {
-        err = "OAuth: cannot read credentials file";
+        err = L_(ErrOAuthCredRead);
         return std::nullopt;
     }
 
@@ -94,7 +96,7 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_oauth(std::string& err) {
 
     if (credentials::needs_refresh(*creds, now_unix_ms(), kRefreshSkewMs)) {
         if (!may_refresh()) {
-            err = "OAuth: token expired";
+            err = L_(ErrOAuthExpired);
             return std::nullopt;
         }
         auto fresh = refresh_oauth(*creds, err);
@@ -119,7 +121,7 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_oauth(std::string& err) {
         if (resp->status == 200) {
             auto snap = api::parse_usage(resp->body);
             if (!snap) {
-                err = "OAuth: unexpected response";
+                err = std::string("OAuth: ") + L_(ErrUnexpected);
             }
             return snap;
         }
@@ -135,14 +137,14 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_oauth(std::string& err) {
         err = "OAuth: HTTP " + std::to_string(resp->status);
         return std::nullopt;
     }
-    err = "OAuth: yetki reddedildi";
+    err = L_(ErrOAuthDenied);
     return std::nullopt;
 }
 
 std::optional<credentials::OAuthCredentials> UsageFetcher::refresh_oauth(
     const credentials::OAuthCredentials& current, std::string& err) {
     std::string body = credentials::build_refresh_request(current.refresh_token, kClaudeCodeClientId);
-    std::string last_err = "unreachable";
+    std::string last_err = L_(ErrUnreachable);
 
     for (const wchar_t* host : kTokenHosts) {
         std::string terr;
@@ -160,12 +162,12 @@ std::optional<credentials::OAuthCredentials> UsageFetcher::refresh_oauth(
         wipe(body);
         if (resp->status != 200) {
             // 400 invalid_grant: refresh token revoked/expired → user must run `claude` and log in.
-            err = "OAuth refresh: HTTP " + std::to_string(resp->status);
+            err = std::string(L_(ErrRefreshPrefix)) + "HTTP " + std::to_string(resp->status);
             return std::nullopt;
         }
         const auto parsed = credentials::parse_refresh_response(resp->body);
         if (!parsed) {
-            err = "OAuth refresh: unexpected response";
+            err = std::string(L_(ErrRefreshPrefix)) + L_(ErrUnexpected);
             return std::nullopt;
         }
         auto fresh = credentials::apply_refresh(current, *parsed, now_unix_ms());
@@ -195,14 +197,14 @@ std::optional<credentials::OAuthCredentials> UsageFetcher::refresh_oauth(
         return fresh;
     }
     wipe(body);
-    err = "OAuth refresh: " + last_err;
+    err = L_(ErrRefreshPrefix) + last_err;
     return std::nullopt;
 }
 
 std::optional<api::UsageSnapshot> UsageFetcher::fetch_session(std::string& err) {
     auto key = secret::load(paths_.session_key);
     if (!key || key->empty()) {
-        err = "Web: no sessionKey saved";
+        err = L_(ErrWebNoKey);
         return std::nullopt;
     }
     if (!web_) {
@@ -228,12 +230,12 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_session(std::string& err) 
         }
         if (resp->status != 200) {
             err = "Web: HTTP " + std::to_string(resp->status) +
-                  (resp->status == 403 ? " (invalid cookie or Cloudflare)" : "");
+                  (resp->status == 403 ? L_(ErrCookieOrCloudflare) : "");
             return std::nullopt;
         }
         const auto org = api::pick_chat_org(resp->body);
         if (!org) {
-            err = "Web: organization not found";
+            err = L_(ErrWebNoOrg);
             return std::nullopt;
         }
         org_id_ = to_wide(*org);
@@ -251,14 +253,16 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_session(std::string& err) 
             org_id_.clear();  // stale cached org: rediscover next time
         }
         err = "Web: HTTP " + std::to_string(resp->status) +
-              (resp->status == 403 ? " (invalid cookie or Cloudflare)" : "");
+              (resp->status == 403 ? L_(ErrCookieOrCloudflare) : "");
         return std::nullopt;
     }
     auto snap = api::parse_usage(resp->body);
     if (!snap) {
-        err = "Web: unexpected response";
+        err = std::string("Web: ") + L_(ErrUnexpected);
     }
     return snap;
 }
+
+#undef L_
 
 }  // namespace cub::win

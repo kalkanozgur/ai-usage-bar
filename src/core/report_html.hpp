@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "core/i18n.hpp"
 #include "core/usage_breakdown.hpp"
 #include "core/usage_math.hpp"
 
@@ -24,17 +25,15 @@ struct Input {
     std::vector<usage::Sample> samples;           ///< ascending by ts; at least the last 7 days
     std::vector<breakdown::Result> sessions;      ///< any order; ended_at decides the view
     View default_view = View::Week;
+    i18n::Lang lang = i18n::Lang::En;
 };
 
 [[nodiscard]] std::string render_html(const Input& in);
 
 // Exposed for tests.
 [[nodiscard]] std::string escape_html(std::string_view s);
-/// English display name for an internal (Turkish) group id; "Bağlantı: x" → "Connector: x".
-/// Group ids stay stable so caches and *_usage.json summaries keep working.
-[[nodiscard]] std::string group_label(std::string_view name);
-/// 812 → "812", 81200 → "81.2 K", 3040000 → "3.04 M".
-[[nodiscard]] std::string format_tokens(double v);
+/// 812 → "812", 81200 → "81.2 K" ("81,2 K" in Turkish), 3040000 → "3.04 M".
+[[nodiscard]] std::string format_tokens(double v, i18n::Lang lang = i18n::Lang::En);
 /// Aggregates group costs of several sessions; largest first, shares over the combined total.
 [[nodiscard]] breakdown::Result merge(const std::vector<const breakdown::Result*>& parts);
 

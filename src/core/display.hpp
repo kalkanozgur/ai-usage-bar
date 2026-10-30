@@ -1,10 +1,11 @@
-// Turns a usage snapshot into the two taskbar lines (English). Pure logic, UTF-8 output.
+// Turns a usage snapshot into the two taskbar lines (English or Turkish). Pure logic, UTF-8.
 #pragma once
 
 #include <cstdint>
 #include <string>
 
 #include "core/api.hpp"
+#include "core/i18n.hpp"
 
 namespace cub::display {
 
@@ -22,6 +23,7 @@ struct Options {
     ColorMode color_mode = ColorMode::Pace;
     double pace_margin = 5.0;    ///< points ahead of even spend before turning orange
     double pace_min_pct = 25.0;  ///< ignore pace below this usage (early-window noise)
+    i18n::Lang lang = i18n::Lang::En;
 };
 
 struct Lines {
@@ -42,7 +44,7 @@ struct Lines {
 [[nodiscard]] Level level_for_window(const api::UsageWindow& w, std::int64_t window_sec,
                                      std::int64_t now, const Options& opt) noexcept;
 
-/// "Session 23% · 2h14m" / "Week 41% · 3d05h". `stale` dims both lines.
+/// "Session 23% · 2h14m" / "Week 41% · 3d05h" (tr: "Oturum %23 · 2s14dk"). `stale` dims both.
 [[nodiscard]] Lines format(const api::UsageSnapshot& snap, std::int64_t now_unix,
                            const Options& opt, bool stale);
 

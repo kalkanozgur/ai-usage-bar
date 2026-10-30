@@ -80,7 +80,7 @@ efektif = input + 0.1 × cache_read + 2 × cache_creation + 5 × output
 | Bağlantı: `<sunucu>` | Diğer `mcp__<sunucu>__*` araçları. Sunucu adı rastgele bir ID ise (≥16 karakter, yalnız hex ve `-`) bunun yerine araç adı kullanılır |
 | Konuşma/diğer | Kalan her şey |
 
-Raporda gruplar İngilizce gösterilir (`report::group_label`): Claude instructions, Built-in browser, Claude in Chrome, Computer use, Web, Files/shell, Skills, Tool loading, Subagents, Connector: `<sunucu>`, Conversation/other. Dahili kimlikler Türkçe kalır; böylece önbellek ve `*_usage.json` dosyaları uyumlu kalır.
+Rapor `language=en` iken gruplar İngilizce gösterilir (`i18n::group_label`), `language=tr` iken dahili Türkçe adlarıyla: Claude instructions, Built-in browser, Claude in Chrome, Computer use, Web, Files/shell, Skills, Tool loading, Subagents, Connector: `<sunucu>`, Conversation/other. Dahili kimlikler Türkçe kalır; böylece önbellek ve `*_usage.json` dosyaları uyumlu kalır.
 
 Gruplar ilk eşleşmeden itibaren yukarıdan aşağıya sırayla denenir (`Claude_Browser__computer` → Yerleşik tarayıcı).
 

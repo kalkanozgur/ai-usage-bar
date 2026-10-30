@@ -4,26 +4,20 @@
 #include <array>
 #include <charconv>
 #include <map>
-#include <utility>
 
 #include "core/time_util.hpp"
 
 namespace cub::report {
 namespace {
 
+using i18n::Lang;
+using i18n::S;
+
 constexpr std::int64_t kDay = 86400;
 constexpr std::int64_t kGapSec = 20 * 60;  // longer gaps (widget hidden) break the line
 constexpr std::size_t kMaxHoverPoints = 480;  // points embedded for the hover crosshair
 
 // ---- formatting -------------------------------------------------------------
-
-std::string fixed(double v, int precision) {
-    std::array<char, 40> buf{};
-    const auto r =
-        std::to_chars(buf.data(), buf.data() + buf.size(), v, std::chars_format::fixed, precision);
-    std::string s(buf.data(), r.ptr);
-    return s;
-}
 
 std::string svg_num(double v) {
     std::array<char, 40> buf{};
@@ -60,29 +54,29 @@ std::string two(int v) {
     return v < 10 ? "0" + s : s;
 }
 
-std::string fmt_hm(std::int64_t ts, std::int32_t off) {
-    const Local l = to_local(ts, off);
-    return two(l.hour) + ":" + two(l.minute);
-}
+/// Formatting context shared by all sections.
+struct Fmt {
+    Lang lang;
+    std::int32_t off;
 
-std::string fmt_dm(std::int64_t ts, std::int32_t off) {
-    static constexpr std::array<const char*, 12> kMonths = {"Jan", "Feb", "Mar", "Apr",
-                                                            "May", "Jun", "Jul", "Aug",
-                                                            "Sep", "Oct", "Nov", "Dec"};
-    const Local l = to_local(ts, off);
-    return std::to_string(l.date.day) + " " + kMonths[(l.date.month + 11) % 12];
-}
-
-std::string fmt_dt(std::int64_t ts, std::int32_t off) {
-    return fmt_dm(ts, off) + " " + fmt_hm(ts, off);
-}
-
-std::string fmt_wday(std::int64_t ts, std::int32_t off) {
-    static constexpr std::array<const char*, 7> kNames = {"Sun", "Mon", "Tue", "Wed",
-                                                          "Thu", "Fri", "Sat"};
-    const Local l = to_local(ts, off);
-    return std::string(kNames[static_cast<std::size_t>(l.weekday)]) + " " + fmt_dm(ts, off);
-}
+    [[nodiscard]] const char* t(S k) const noexcept { return i18n::t(lang, k); }
+    [[nodiscard]] std::string pct(double v, int p = 0) const { return i18n::pct(lang, v, p); }
+    [[nodiscard]] std::string num(double v, int p) const { return i18n::num(lang, v, p); }
+    [[nodiscard]] std::string hm(std::int64_t ts) const {
+        const Local l = to_local(ts, off);
+        return two(l.hour) + ":" + two(l.minute);
+    }
+    /// "30 Oct" / "30 Eki"
+    [[nodiscard]] std::string dm(std::int64_t ts) const {
+        const Local l = to_local(ts, off);
+        return std::to_string(l.date.day) + " " + i18n::month(lang, l.date.month);
+    }
+    [[nodiscard]] std::string dt(std::int64_t ts) const { return dm(ts) + " " + hm(ts); }
+    /// "Fri 30 Oct" / "Cum 30 Eki"
+    [[nodiscard]] std::string wday(std::int64_t ts) const {
+        return std::string(i18n::weekday(lang, to_local(ts, off).weekday)) + " " + dm(ts);
+    }
+};
 
 std::int64_t local_midnight(std::int64_t ts, std::int32_t off) {
     std::int64_t t = ts + off;
@@ -98,7 +92,7 @@ std::int64_t local_midnight(std::int64_t ts, std::int32_t off) {
 struct Range {
     View view;
     const char* id;
-    const char* label;
+    S label;
     std::int64_t from;
     std::int64_t tick;  ///< x-axis tick spacing (seconds)
 };
@@ -139,12 +133,12 @@ constexpr double kT = 12.0;
 constexpr double kB = 26.0;   // bottom: x labels
 
 struct Series {
-    const char* name;
+    S name;
     const char* css_var;
     bool session;
 };
 
-void line_chart(std::string& o, const Input& in, const Range& r) {
+void line_chart(std::string& o, const Input& in, const Range& r, const Fmt& f) {
     const std::int64_t from = r.from;
     const std::int64_t to = std::max(in.now, from + 60);
     const double pw = kW - kL - kR;
@@ -161,10 +155,10 @@ void line_chart(std::string& o, const Input& in, const Range& r) {
         }
     }
 
-    o += "<figure class=\"chart\"><figcaption>Limit usage (%)</figcaption>";
+    o += "<figure class=\"chart\"><figcaption>" + std::string(f.t(S::ChartLimits)) +
+         "</figcaption>";
     if (pts.empty()) {
-        o += "<p class=\"empty\">No limit samples in this range yet. The widget records one "
-             "on every successful query.</p></figure>";
+        o += "<p class=\"empty\">" + std::string(f.t(S::ChartLimitsEmpty)) + "</p></figure>";
         return;
     }
     // Hover data: [ts, session, week] (null when missing), downsampled; read by the inline script.
@@ -189,35 +183,34 @@ void line_chart(std::string& o, const Input& in, const Range& r) {
         }
         pj += "]";
     }
-    o += "<svg class=\"lc\" viewBox=\"0 0 720 240\" role=\"img\" aria-label=\"Session and week "
-         "usage\" data-from=\"" +
-         std::to_string(from) + "\" data-to=\"" + std::to_string(to) + "\" data-off=\"" +
-         std::to_string(in.utc_offset_sec) + "\" data-l=\"" + svg_num(kL) + "\" data-pw=\"" +
-         svg_num(pw) + "\" data-t=\"" + svg_num(kT) + "\" data-ph=\"" + svg_num(ph) +
-         "\" data-p=\"" + pj + "\">";
+    o += "<svg class=\"lc\" viewBox=\"0 0 720 240\" role=\"img\" aria-label=\"" +
+         std::string(f.t(S::ChartAria)) + "\" data-from=\"" + std::to_string(from) +
+         "\" data-to=\"" + std::to_string(to) + "\" data-off=\"" + std::to_string(f.off) +
+         "\" data-l=\"" + svg_num(kL) + "\" data-pw=\"" + svg_num(pw) + "\" data-t=\"" +
+         svg_num(kT) + "\" data-ph=\"" + svg_num(ph) + "\" data-p=\"" + pj + "\">";
     // grid + y labels
     for (int p = 0; p <= 100; p += 25) {
         const std::string yy = svg_num(y(p));
         o += "<line class=\"grid\" x1=\"" + svg_num(kL) + "\" x2=\"" + svg_num(kW - kR) +
              "\" y1=\"" + yy + "\" y2=\"" + yy + "\"/>";
         o += "<text class=\"axis\" x=\"" + svg_num(kL - 6) + "\" y=\"" + svg_num(y(p) + 4) +
-             "\" text-anchor=\"end\">" + std::to_string(p) + "%</text>";
+             "\" text-anchor=\"end\">" + f.pct(p) + "</text>";
     }
     // x ticks on local boundaries
-    std::int64_t tick = local_midnight(from, in.utc_offset_sec);
+    std::int64_t tick = local_midnight(from, f.off);
     while (tick < from) {
         tick += r.tick;
     }
     for (; tick <= to; tick += r.tick) {
-        const std::string label = r.tick >= kDay ? fmt_wday(tick, in.utc_offset_sec)
-                                                 : fmt_hm(tick, in.utc_offset_sec);
+        const std::string label = r.tick >= kDay ? f.wday(tick) : f.hm(tick);
         o += "<text class=\"axis\" x=\"" + svg_num(x(tick)) + "\" y=\"" + svg_num(kH - 8) +
              "\" text-anchor=\"middle\">" + label + "</text>";
     }
 
-    const std::array<Series, 2> series = {Series{"Session", "--s1", true},
-                                          Series{"Week", "--s2", false}};
+    const std::array<Series, 2> series = {Series{S::Session, "--s1", true},
+                                          Series{S::Week, "--s2", false}};
     for (const Series& se : series) {
+        const std::string name = f.t(se.name);
         std::string d;
         std::int64_t prev_ts = 0;
         bool open = false;
@@ -239,77 +232,85 @@ void line_chart(std::string& o, const Input& in, const Range& r) {
             continue;
         }
         o += "<path class=\"line\" style=\"stroke:var(" + std::string(se.css_var) + ")\" d=\"" +
-             d + "\"><title>" + se.name + "</title></path>";
+             d + "\"><title>" + name + "</title></path>";
         // direct label at the line end
         const double lv = se.session ? *last->session_pct : *last->week_pct;
         o += "<circle class=\"end\" style=\"fill:var(" + std::string(se.css_var) + ")\" cx=\"" +
              svg_num(x(last->ts)) + "\" cy=\"" + svg_num(y(lv)) + "\" r=\"4\"/>";
         o += "<text class=\"dl\" x=\"" + svg_num(x(last->ts) + 8) + "\" y=\"" +
-             svg_num(y(lv) + (se.session ? -4 : 12)) + "\">" + se.name + " " + fixed(lv, 0) +
-             "%</text>";
+             svg_num(y(lv) + (se.session ? -4 : 12)) + "\">" + name + " " + f.pct(lv) +
+             "</text>";
     }
     // crosshair + markers, moved by the inline script; parked off-canvas until hovered
     o += "<line class=\"xh\" x1=\"-10\" x2=\"-10\" y1=\"" + svg_num(kT) + "\" y2=\"" +
          svg_num(kT + ph) + "\"/><circle class=\"xm s\" cx=\"-10\" cy=\"0\" r=\"4\"/>"
          "<circle class=\"xm w\" cx=\"-10\" cy=\"0\" r=\"4\"/>";
-    o += "</svg><div class=\"tip\" hidden></div><div class=\"legend\"><span><i style=\"background:var(--s1)\"></i>Session (5 h)"
-         "</span><span><i style=\"background:var(--s2)\"></i>Week (7 days)</span></div>"
-         "</figure>";
+    o += "</svg><div class=\"tip\" hidden></div><div class=\"legend\"><span><i "
+         "style=\"background:var(--s1)\"></i>" +
+         std::string(f.t(S::LegendSession)) +
+         "</span><span><i style=\"background:var(--s2)\"></i>" + f.t(S::LegendWeek) +
+         "</span></div></figure>";
 }
 
 // ---- token breakdown --------------------------------------------------------
 
-void breakdown_bars(std::string& o, const std::vector<const breakdown::Result*>& sessions) {
-    o += "<figure class=\"chart\"><figcaption>Token breakdown (effective)</figcaption>";
+void breakdown_bars(std::string& o, const std::vector<const breakdown::Result*>& sessions,
+                    const Fmt& f) {
+    o += "<figure class=\"chart\"><figcaption>" + std::string(f.t(S::ChartTokens)) +
+         "</figcaption>";
     const breakdown::Result total = merge(sessions);
     if (total.total_effective <= 0.0) {
-        o += "<p class=\"empty\">No session transcripts or summaries in this range.</p></figure>";
+        o += "<p class=\"empty\">" + std::string(f.t(S::ChartTokensEmpty)) + "</p></figure>";
         return;
     }
     o += "<p class=\"sub\">" + std::to_string(sessions.size()) +
-         (sessions.size() == 1 ? " session \xC2\xB7 " : " sessions \xC2\xB7 ") +
-         std::to_string(total.request_count) + " requests \xC2\xB7 total " +
-         format_tokens(total.total_effective) + "</p><div class=\"bars\">";
+         f.t(sessions.size() == 1 ? S::OneSession : S::ManySessions) +
+         std::to_string(total.request_count) + f.t(S::Requests) + f.t(S::Total) +
+         format_tokens(total.total_effective, f.lang) + "</p><div class=\"bars\">";
     const double top = total.groups.empty() ? 1.0 : total.groups.front().effective;
     for (const auto& g : total.groups) {
-        const std::string name = escape_html(group_label(g.name));
-        const std::string pct = fixed(100.0 * g.share, 1);
-        o += "<div class=\"row\" title=\"" + name + ": " + format_tokens(g.effective) + " (" +
-             pct + "%)\"><span class=\"lbl\">" + name +
+        const std::string name = escape_html(i18n::group_label(f.lang, g.name));
+        const std::string pct = f.pct(100.0 * g.share, 1);
+        const std::string tok = format_tokens(g.effective, f.lang);
+        o += "<div class=\"row\" title=\"" + name + ": " + tok + " (" + pct +
+             ")\"><span class=\"lbl\">" + name +
              "</span><span class=\"track\"><span class=\"fill\" style=\"width:" +
-             svg_num(std::max(0.5, 100.0 * g.effective / top)) + "%\"></span></span><span "
-             "class=\"val\">" + pct + "% <em>" + format_tokens(g.effective) + "</em></span></div>";
+             svg_num(std::max(0.5, 100.0 * g.effective / top)) +
+             "%\"></span></span><span class=\"val\">" + pct + " <em>" + tok +
+             "</em></span></div>";
     }
     o += "</div></figure>";
 }
 
 void session_table(std::string& o, const std::vector<const breakdown::Result*>& sessions,
-                   std::int32_t off) {
+                   const Fmt& f) {
     if (sessions.empty()) {
         return;
     }
-    o += "<details><summary>Sessions (" + std::to_string(sessions.size()) +
-         ")</summary><table><thead><tr><th>Ended</th><th>Project</th><th>Requests</th>"
-         "<th>Effective</th><th>Largest group</th></tr></thead><tbody>";
+    o += "<details><summary>" + std::string(f.t(S::TableSessions)) + " (" +
+         std::to_string(sessions.size()) + ")</summary><table><thead><tr><th>" +
+         f.t(S::ThEnded) + "</th><th>" + f.t(S::ThProject) + "</th><th>" + f.t(S::ThRequests) +
+         "</th><th>" + f.t(S::ThEffective) + "</th><th>" + f.t(S::ThLargestGroup) +
+         "</th></tr></thead><tbody>";
     for (const auto* s : sessions) {
-        const std::string end = s->ended_at ? fmt_dt(*s->ended_at, off) : "\xE2\x80\x94";
+        const std::string end = s->ended_at ? f.dt(*s->ended_at) : "\xE2\x80\x94";
         const std::string topg =
             s->groups.empty() ? "\xE2\x80\x94"
-                              : escape_html(group_label(s->groups.front().name)) + " " +
-                                    fixed(100.0 * s->groups.front().share, 0) + "%";
+                              : escape_html(i18n::group_label(f.lang, s->groups.front().name)) +
+                                    " " + f.pct(100.0 * s->groups.front().share);
         o += "<tr><td>" + end + "</td><td>" +
              escape_html(s->project.empty() ? std::string("\xE2\x80\x94") : s->project) +
              "</td><td class=\"num\">" + std::to_string(s->request_count) +
-             "</td><td class=\"num\">" + format_tokens(s->total_effective) + "</td><td>" + topg +
-             "</td></tr>";
+             "</td><td class=\"num\">" + format_tokens(s->total_effective, f.lang) + "</td><td>" +
+             topg + "</td></tr>";
     }
     o += "</tbody></table></details>";
 }
 
 // ---- headline cards ---------------------------------------------------------
 
-void window_card(std::string& o, const Input& in, const char* title, usage::Window w,
-                 std::int64_t window_sec) {
+void window_card(std::string& o, const Input& in, S title, usage::Window w,
+                 std::int64_t window_sec, const Fmt& f) {
     const usage::Sample* last = nullptr;
     for (auto it = in.samples.rbegin(); it != in.samples.rend(); ++it) {
         const auto& v = w == usage::Window::Session ? it->session_pct : it->week_pct;
@@ -318,49 +319,53 @@ void window_card(std::string& o, const Input& in, const char* title, usage::Wind
             break;
         }
     }
-    o += "<div class=\"card\"><h3>" + std::string(title) + "</h3>";
+    o += "<div class=\"card\"><h3>" + std::string(f.t(title)) + "</h3>";
     if (last == nullptr) {
-        o += "<p class=\"big\">\xE2\x80\x94</p><p class=\"muted\">No data</p></div>";
+        o += "<p class=\"big\">\xE2\x80\x94</p><p class=\"muted\">" + std::string(f.t(S::NoData)) +
+             "</p></div>";
         return;
     }
     const double pct = w == usage::Window::Session ? *last->session_pct : *last->week_pct;
     const auto reset = w == usage::Window::Session ? last->session_reset : last->week_reset;
-    o += "<p class=\"big\">" + fixed(pct, 0) + "%</p>";
+    o += "<p class=\"big\">" + f.pct(pct) + "</p>";
     if (reset) {
         if (const auto p = usage::pace(pct, *reset, window_sec, in.now)) {
             const double d = p->delta_pct;
-            const std::string side = d >= 0 ? "ahead" : "behind";
-            o += "<p>Pace: <b>" + fixed(d < 0 ? -d : d, 0) + " pts " + side +
-                 "</b> <span class=\"muted\">(expected " + fixed(p->expected_pct, 0) +
-                 "%)</span></p>";
+            o += "<p>" + std::string(f.t(S::PaceLabel)) + " <b>" + f.num(d < 0 ? -d : d, 0) +
+                 " " + f.t(d >= 0 ? S::PtsAhead : S::PtsBehind) +
+                 "</b> <span class=\"muted\">(" + f.t(S::Expected) + " " +
+                 f.pct(p->expected_pct) + ")</span></p>";
         }
-        o += "<p>Reset: " + fmt_dt(*reset, in.utc_offset_sec) + " <span class=\"muted\">(" +
-             time::format_remaining_en(*reset - in.now) + ")</span></p>";
+        o += "<p>" + std::string(f.t(S::ResetLabel)) + " " + f.dt(*reset) +
+             " <span class=\"muted\">(" + i18n::remaining(f.lang, *reset - in.now) +
+             ")</span></p>";
     }
     const auto full = usage::projected_full(in.samples, w);
-    o += full ? "<p>Projection: 100% at <b>" + fmt_dt(*full, in.utc_offset_sec) + "</b></p>"
-              : std::string("<p class=\"muted\">Projection: won't hit 100% before reset</p>");
-    o += "<p class=\"muted\">Last sample " + fmt_dt(last->ts, in.utc_offset_sec) + "</p></div>";
+    o += full ? "<p>" + i18n::tf(f.lang, S::ProjectionAt, f.dt(*full)) + "</p>"
+              : "<p class=\"muted\">" + std::string(f.t(S::ProjectionNone)) + "</p>";
+    o += "<p class=\"muted\">" + std::string(f.t(S::LastSample)) + " " + f.dt(last->ts) +
+         "</p></div>";
 }
 
-void rate_card(std::string& o, const Input& in) {
-    o += "<div class=\"card\"><h3>Session \xE2\x86\x92 week rate</h3>";
+void rate_card(std::string& o, const Input& in, const Fmt& f) {
+    o += "<div class=\"card\"><h3>" + std::string(f.t(S::CardRate)) + "</h3>";
     const auto rate = usage::session_to_week_rate(in.samples);
     if (!rate) {
-        o += "<p class=\"big\">\xE2\x80\x94</p><p class=\"muted\">Not enough samples "
-             "(needs at least 1 point of session growth)</p></div>";
+        o += "<p class=\"big\">\xE2\x80\x94</p><p class=\"muted\">" +
+             std::string(f.t(S::RateNotEnough)) + "</p></div>";
         return;
     }
-    o += "<p class=\"big\">" + fixed(*rate, 2) + "</p><p>1 session point \xE2\x89\x88 " +
-         fixed(*rate, 2) + " week points</p>";
+    o += "<p class=\"big\">" + f.num(*rate, 2) + "</p><p>" +
+         i18n::tf(f.lang, S::RatePoint, f.num(*rate, 2)) + "</p>";
     if (*rate > 0.0) {
-        o += "<p class=\"muted\">A full session (100%) \xE2\x89\x88 " +
-             fixed(100.0 * *rate, 0) + "% of the week</p>";
+        o += "<p class=\"muted\">" + i18n::tf(f.lang, S::RateFullWeek, f.pct(100.0 * *rate)) +
+             "</p>";
     }
     o += "</div>";
 }
 
-// Crosshair for every limit chart. Only numbers from data-p are written into the tooltip.
+// Crosshair for every limit chart. Only numbers from data-p are written into the tooltip;
+// labels come from the per-language constants injected before this script.
 constexpr const char* kHoverJs = R"JS(
 document.querySelectorAll('svg.lc').forEach(function(svg){
 var d=svg.dataset,P=JSON.parse(d.p),f=+d.from,t=+d.to,off=+d.off,L=+d.l,W=+d.pw,T=+d.t,H=+d.ph;
@@ -368,10 +373,9 @@ var fig=svg.parentNode,tip=fig.querySelector('.tip'),xh=svg.querySelector('.xh')
 function X(s){return L+W*(s-f)/(t-f)}
 function Y(p){return T+H*(1-Math.max(0,Math.min(100,p))/100)}
 function z(n){return(n<10?'0':'')+n}
-var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-function fmt(s){var x=new Date((s+off)*1000);return x.getUTCDate()+' '+MO[x.getUTCMonth()]+' '+z(x.getUTCHours())+':'+z(x.getUTCMinutes())}
-function pc(v){return v==null?'\u2014':v.toFixed(1)+'%'}
-function park(){tip.hidden=true;[xh].forEach(function(l){l.setAttribute('x1',-10);l.setAttribute('x2',-10)});ms.setAttribute('cx',-10);mw.setAttribute('cx',-10)}
+function fmt(s){var x=new Date((s+off)*1000);return x.getUTCDate()+' '+I18N.mo[x.getUTCMonth()]+' '+z(x.getUTCHours())+':'+z(x.getUTCMinutes())}
+function pc(v){if(v==null)return'—';var n=v.toFixed(1);if(I18N.tr)return'%'+n.replace('.',',');return n+'%'}
+function park(){tip.hidden=true;xh.setAttribute('x1',-10);xh.setAttribute('x2',-10);ms.setAttribute('cx',-10);mw.setAttribute('cx',-10)}
 svg.addEventListener('mousemove',function(e){
 var r=svg.getBoundingClientRect(),vx=(e.clientX-r.left)/r.width*720;
 if(vx<L||vx>L+W||!P.length){park();return}
@@ -380,7 +384,7 @@ while(hi-lo>1){var m=(lo+hi)>>1;if(P[m][0]<s)lo=m;else hi=m}
 var p=Math.abs(P[lo][0]-s)<=Math.abs(P[hi][0]-s)?P[lo]:P[hi],x=X(p[0]);
 xh.setAttribute('x1',x);xh.setAttribute('x2',x);
 [[ms,p[1]],[mw,p[2]]].forEach(function(a){if(a[1]==null)a[0].setAttribute('cx',-10);else{a[0].setAttribute('cx',x);a[0].setAttribute('cy',Y(a[1]))}});
-tip.innerHTML='<b>'+fmt(p[0])+'</b><br><i class="k s"></i>Session '+pc(p[1])+'<br><i class="k w"></i>Week '+pc(p[2]);
+tip.innerHTML='<b>'+fmt(p[0])+'</b><br><i class="k s"></i>'+I18N.s+' '+pc(p[1])+'<br><i class="k w"></i>'+I18N.w+' '+pc(p[2]);
 tip.hidden=false;
 var fr=fig.getBoundingClientRect(),px=r.left-fr.left+x/720*r.width,left=px+12;
 if(left+tip.offsetWidth>fr.width-8)left=px-12-tip.offsetWidth;
@@ -434,6 +438,17 @@ footer{margin-top:20px;color:var(--muted);font-size:12px}
 @media (max-width:560px){.row{grid-template-columns:1fr auto}.row .track{grid-column:1/-1;order:3}}
 )CSS";
 
+/// JS constants for the hover script (all fixed strings from the i18n table, no user data).
+std::string hover_constants(Lang lang) {
+    std::string mo;
+    for (unsigned m = 1; m <= 12; ++m) {
+        mo += std::string(m > 1 ? "," : "") + "'" + i18n::month(lang, m) + "'";
+    }
+    return std::string("var I18N={s:'") + i18n::t(lang, S::Session) + "',w:'" +
+           i18n::t(lang, S::Week) + "',mo:[" + mo + "],tr:" + (lang == Lang::Tr ? "true" : "false") +
+           "};";
+}
+
 }  // namespace
 
 std::string escape_html(std::string_view s) {
@@ -452,39 +467,14 @@ std::string escape_html(std::string_view s) {
     return out;
 }
 
-std::string group_label(std::string_view name) {
-    namespace g = breakdown::group;
-    static constexpr std::array<std::pair<std::string_view, std::string_view>, 10> kLabels = {{
-        {g::kInstructions, "Claude instructions"},
-        {g::kConversation, "Conversation/other"},
-        {g::kChrome, "Claude in Chrome"},
-        {g::kScreen, "Computer use"},
-        {g::kBrowser, "Built-in browser"},
-        {g::kWeb, "Web"},
-        {g::kFiles, "Files/shell"},
-        {g::kSkills, "Skills"},
-        {g::kToolLoad, "Tool loading"},
-        {g::kSubagents, "Subagents"},
-    }};
-    for (const auto& [id, label] : kLabels) {
-        if (name == id) {
-            return std::string(label);
-        }
-    }
-    if (name.starts_with(g::kConnectionPrefix)) {
-        return "Connector: " + std::string(name.substr(g::kConnectionPrefix.size()));
-    }
-    return std::string(name);
-}
-
-std::string format_tokens(double v) {
+std::string format_tokens(double v, i18n::Lang lang) {
     if (v < 1000.0) {
-        return fixed(v, 0);
+        return i18n::num(lang, v, 0);
     }
     if (v < 1e6) {
-        return fixed(v / 1e3, v < 1e4 ? 2 : 1) + " K";
+        return i18n::num(lang, v / 1e3, v < 1e4 ? 2 : 1) + " K";
     }
-    return fixed(v / 1e6, v < 1e7 ? 2 : 1) + " M";
+    return i18n::num(lang, v / 1e6, v < 1e7 ? 2 : 1) + " M";
 }
 
 breakdown::Result merge(const std::vector<const breakdown::Result*>& parts) {
@@ -510,48 +500,50 @@ breakdown::Result merge(const std::vector<const breakdown::Result*>& parts) {
 }
 
 std::string render_html(const Input& in) {
-    const std::int32_t off = in.utc_offset_sec;
+    const Fmt f{in.lang, in.utc_offset_sec};
     const std::array<Range, 3> ranges = {
-        Range{View::LastSession, "sess", "Last session", in.now - usage::kSessionWindowSec, 3600},
-        Range{View::Today, "day", "Today", local_midnight(in.now, off), 3 * 3600},
-        Range{View::Week, "week", "This week", in.now - 7 * kDay, kDay},
+        Range{View::LastSession, "sess", S::TabLastSession, in.now - usage::kSessionWindowSec,
+              3600},
+        Range{View::Today, "day", S::TabToday, local_midnight(in.now, f.off), 3 * 3600},
+        Range{View::Week, "week", S::TabThisWeek, in.now - 7 * kDay, kDay},
     };
 
     std::string o;
     o.reserve(64 * 1024);
-    o += "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" "
-         "content=\"width=device-width,initial-scale=1\"><title>Claude usage "
-         "report</title><style>";
+    o += std::string("<!doctype html><html lang=\"") + (in.lang == Lang::Tr ? "tr" : "en") +
+         "\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" "
+         "content=\"width=device-width,initial-scale=1\"><title>" +
+         f.t(S::ReportTitle) + "</title><style>";
     o += kCss;
     o += "</style></head><body>";
     for (const Range& r : ranges) {
         o += "<input class=\"tab\" type=\"radio\" name=\"v\" id=\"v-" + std::string(r.id) + "\"" +
              (r.view == in.default_view ? " checked" : "") + ">";
     }
-    o += "<main><header><h1>Claude usage report</h1><span class=\"muted\">" +
-         fmt_wday(in.now, off) + " " + fmt_hm(in.now, off) + "</span></header>";
+    o += "<main><header><h1>" + std::string(f.t(S::ReportTitle)) +
+         "</h1><span class=\"muted\">" + f.wday(in.now) + " " + f.hm(in.now) +
+         "</span></header>";
 
     o += "<section class=\"cards\">";
-    window_card(o, in, "Session (5 h)", usage::Window::Session, usage::kSessionWindowSec);
-    window_card(o, in, "Week (7 days)", usage::Window::Week, usage::kWeekWindowSec);
-    rate_card(o, in);
+    window_card(o, in, S::CardSession, usage::Window::Session, usage::kSessionWindowSec, f);
+    window_card(o, in, S::CardWeek, usage::Window::Week, usage::kWeekWindowSec, f);
+    rate_card(o, in, f);
     o += "</section><nav class=\"tabs\">";
     for (const Range& r : ranges) {
-        o += "<label for=\"v-" + std::string(r.id) + "\">" + r.label + "</label>";
+        o += "<label for=\"v-" + std::string(r.id) + "\">" + f.t(r.label) + "</label>";
     }
     o += "</nav>";
 
     for (const Range& r : ranges) {
         const auto sessions = sessions_in(in, r);
         o += "<section class=\"view view-" + std::string(r.id) + "\">";
-        line_chart(o, in, r);
-        breakdown_bars(o, sessions);
-        session_table(o, sessions, off);
+        line_chart(o, in, r, f);
+        breakdown_bars(o, sessions, f);
+        session_table(o, sessions, f);
         o += "</section>";
     }
-    o += "<footer>Effective = input + 0.1\xC3\x97cache read + 2\xC3\x97cache write + "
-         "5\xC3\x97output. Only numbers and tool names are read; message text is never "
-         "stored.</footer></main><script>";
+    o += "<footer>" + std::string(f.t(S::Footer)) + "</footer></main><script>";
+    o += hover_constants(in.lang);
     o += kHoverJs;
     o += "</script></body></html>";
     return o;

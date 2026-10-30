@@ -17,6 +17,8 @@
 namespace cub::win {
 namespace {
 
+using i18n::S;
+
 constexpr wchar_t kWindowClass[] = L"ClaudeUsageBar.Widget";
 constexpr wchar_t kAppTitle[] = L"Claude Usage Bar";
 constexpr wchar_t kUsageUrl[] = L"https://claude.ai/settings/usage";
@@ -157,7 +159,7 @@ LRESULT App::handle(UINT msg, WPARAM wp, LPARAM lp) {
             if (wp != 0) {
                 open_path(report_path(paths_));
             } else {
-                MessageBoxW(hwnd_, L"Could not build the usage report. See the log file for details.",
+                MessageBoxW(hwnd_, tw(S::MsgReportFailed).c_str(),
                             kAppTitle, MB_ICONWARNING | MB_OK);
             }
             return 0;
@@ -235,12 +237,13 @@ void App::on_tick() {
                                              : display::ColorMode::Threshold;
             opt.pace_margin = cfg_.pace_margin;
             opt.pace_min_pct = cfg_.pace_min_pct;
+            opt.lang = cfg_.lang;
             lines = display::format(*snapshot_, now_unix_s(), opt, stale);
         } else if (!last_error_.empty()) {
-            lines = {"Claude \xE2\x9A\xA0", "error \xC2\xB7 right-click",
+            lines = {"Claude \xE2\x9A\xA0", i18n::t(cfg_.lang, S::ErrorRightClick),
                      display::Level::Dim, display::Level::Dim};
         } else {
-            lines = {"Claude", "loading\xE2\x80\xA6", display::Level::Dim,
+            lines = {"Claude", i18n::t(cfg_.lang, S::Loading), display::Level::Dim,
                      display::Level::Dim};
         }
     }
@@ -277,15 +280,15 @@ std::wstring App::status_line() {
         if (e.size() > 80) {
             e = e.substr(0, 77) + L"...";
         }
-        return L"Error: " + e;
+        return tw(S::StatusError) + e;
     }
     if (!snapshot_) {
-        return L"No data yet";
+        return tw(S::StatusNoData);
     }
     wchar_t hhmm[16];
     std::swprintf(hhmm, 16, L"%02u:%02u", static_cast<unsigned>(last_ok_local_.wHour),
                   static_cast<unsigned>(last_ok_local_.wMinute));
-    return L"Source: " + to_wide(source_) + L" · last update " + hhmm;
+    return tw(S::StatusSource) + to_wide(source_) + tw(S::StatusLastUpdate) + hhmm;
 }
 
 void App::show_menu() {
@@ -296,19 +299,19 @@ void App::show_menu() {
     AppendMenuW(m, MF_STRING | MF_GRAYED, 0, status.c_str());
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(m, MF_STRING | (report_busy_ ? MF_GRAYED : 0), kIdReport,
-                L"Open usage report");
-    AppendMenuW(m, MF_STRING, kIdOpen, L"Open usage page (claude.ai)");
-    AppendMenuW(m, MF_STRING, kIdRefresh, L"Refresh now");
+                tw(S::MenuOpenReport).c_str());
+    AppendMenuW(m, MF_STRING, kIdOpen, tw(S::MenuOpenUsagePage).c_str());
+    AppendMenuW(m, MF_STRING, kIdRefresh, tw(S::MenuRefresh).c_str());
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING, kIdPasteKey, L"Save sessionKey from clipboard");
-    AppendMenuW(m, MF_STRING | (has_key ? 0 : MF_GRAYED), kIdClearKey, L"Delete saved sessionKey");
+    AppendMenuW(m, MF_STRING, kIdPasteKey, tw(S::MenuPasteKey).c_str());
+    AppendMenuW(m, MF_STRING | (has_key ? 0 : MF_GRAYED), kIdClearKey, tw(S::MenuClearKey).c_str());
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(m, MF_STRING | (autostart_enabled() ? MF_CHECKED : 0), kIdAutostart,
-                L"Start with Windows");
-    AppendMenuW(m, MF_STRING, kIdConfig, L"Open settings file");
-    AppendMenuW(m, MF_STRING, kIdLog, L"Open log file");
+                tw(S::MenuAutostart).c_str());
+    AppendMenuW(m, MF_STRING, kIdConfig, tw(S::MenuOpenConfig).c_str());
+    AppendMenuW(m, MF_STRING, kIdLog, tw(S::MenuOpenLog).c_str());
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING, kIdExit, L"Exit");
+    AppendMenuW(m, MF_STRING, kIdExit, tw(S::MenuExit).c_str());
 
     POINT pt{};
     GetCursorPos(&pt);
@@ -358,7 +361,7 @@ void App::paste_session_key() {
         CloseClipboard();
     }
     if (text.rfind(L"sk-ant-", 0) != 0) {
-        MessageBoxW(hwnd_, L"No valid sessionKey on the clipboard (it must start with \"sk-ant-\").",
+        MessageBoxW(hwnd_, tw(S::MsgNoKeyOnClipboard).c_str(),
                     kAppTitle, MB_ICONWARNING | MB_OK);
         return;
     }
@@ -367,8 +370,7 @@ void App::paste_session_key() {
     const bool ok = secret::save(paths_.session_key, utf8);
     SecureZeroMemory(utf8.data(), utf8.size());
     MessageBoxW(hwnd_,
-                ok ? L"sessionKey encrypted for this Windows account and saved."
-                   : L"Could not save the sessionKey. See the log file for details.",
+                (ok ? tw(S::MsgKeySaved) : tw(S::MsgKeySaveFailed)).c_str(),
                 kAppTitle, (ok ? MB_ICONINFORMATION : MB_ICONERROR) | MB_OK);
     if (ok) {
         request_refresh();
