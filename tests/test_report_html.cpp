@@ -58,7 +58,8 @@ TEST(Report, RendersEmptyInput) {
     EXPECT_TRUE(has(html, "id=\"v-week\" checked"));
     EXPECT_FALSE(has(html, "id=\"v-day\" checked"));
     EXPECT_TRUE(has(html, "limit \xC3\xB6rne\xC4\x9Fi yok"));
-    EXPECT_FALSE(has(html, "<script"));
+    EXPECT_FALSE(has(html, "<script src"));  // inline only, nothing loaded from outside
+    EXPECT_FALSE(has(html, "http://"));
 }
 
 TEST(Report, RendersSeriesBreakdownAndEscapedProjects) {
@@ -86,5 +87,7 @@ TEST(Report, RendersSeriesBreakdownAndEscapedProjects) {
     EXPECT_FALSE(has(html, "E--Projects-<x>"));
     EXPECT_TRUE(has(html, std::string(bd::group::kInstructions)));
     EXPECT_TRUE(has(html, "Tempo:"));
+    EXPECT_TRUE(has(html, "class=\"xh\""));                       // hover crosshair
+    EXPECT_TRUE(has(html, "data-p=\"[[" + std::to_string(in.now - 3600) + ",10.0,40.0]"));
     EXPECT_FALSE(has(html, ">old<"));                    // 9-day-old session is not listed
 }

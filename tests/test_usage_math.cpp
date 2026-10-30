@@ -123,3 +123,25 @@ TEST(UsageMath, SessionToWeekRate) {
     EXPECT_DOUBLE_EQ(*rate, 2.5 / 20.0);
     EXPECT_FALSE(u::session_to_week_rate(std::vector<u::Sample>{s(0, 10, 1.0)}));
 }
+
+TEST(UsageMath, CsvRetention) {
+    const std::int64_t now = 1793383200;  // 2026-10-30
+    EXPECT_FALSE(u::csv_expired("usage-2026-10.csv", now, 3));
+    EXPECT_FALSE(u::csv_expired("usage-2026-08.csv", now, 3));
+    EXPECT_TRUE(u::csv_expired("usage-2026-07.csv", now, 3));
+    EXPECT_TRUE(u::csv_expired("usage-2025-12.csv", now, 3));
+    EXPECT_FALSE(u::csv_expired("usage-2026-09.csv", now, 1));  // raised to 2
+    EXPECT_TRUE(u::csv_expired("usage-2026-08.csv", now, 1));
+    EXPECT_FALSE(u::csv_expired("usage-2020-01.csv", now, 0));  // 0 = keep all
+    EXPECT_FALSE(u::csv_expired("config.ini", now, 3));
+    EXPECT_FALSE(u::csv_expired("usage-2026-13.csv", now, 3));
+    EXPECT_FALSE(u::csv_expired("usage-2026-07.csv.bak", now, 3));
+}
+
+TEST(UsageMath, LocalClock) {
+    using cub::time::format_local_clock;
+    const std::int64_t now = 1793383200;  // Fri 2026-10-30 18:00Z = 21:00 TSİ
+    EXPECT_EQ(format_local_clock(now + 40 * 60, now, 3 * 3600), "21:40");
+    EXPECT_EQ(format_local_clock(now + 4 * 3600, now, 3 * 3600), "Cmt 01:00");
+    EXPECT_EQ(format_local_clock(now + 3 * 86400, now, 0), "Pzt 18:00");
+}

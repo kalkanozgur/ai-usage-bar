@@ -10,6 +10,7 @@ Widget iki tür veri toplar ve grafik raporunda gösterir. İkisi de yalnız say
 ## 1. Limit zaman serisi (CSV)
 
 **Konum:** `%LOCALAPPDATA%\ClaudeUsageBar\usage-YYYY-MM.csv`. Ay UTC'ye göre seçilir ve her ay için yeni bir dosya açılır.
+**Saklama:** `[report] csv_keep_months` (varsayılan 3) aydan eski dosyalar widget açılırken silinir. Değer en az 2'ye yükseltilir, böylece raporun 8 günlük geriye bakışı önceki ayı her zaman bulur. `0` = hiç silme (`usage_math::csv_expired`).
 **Yazma:** Her başarılı kullanım sorgusunda bir satır yazılır. `refresh_sec=180` ile bu günde ~480 satır, ~25 KB eder. Yeni ya da boş dosyaya önce başlık yazılır.
 
 ```
@@ -121,11 +122,15 @@ Widget yazısına sol tıklanınca (veya menüde "Grafik raporunu aç" seçilinc
 |---|---|
 | Kartlar | Oturum ve hafta için şimdiki %, tempo farkı, reset zamanı, %100 tahmini; oturum → hafta kuru |
 | Sekmeler | **Son oturum** (son 5 sa / en yeni döküm) · **Bugün** (yerel gece yarısından beri) · **Bu hafta** (son 7 gün, varsayılan) |
-| Limit grafiği | Oturum % ve hafta % tek eksende (0–100). 20 dk'dan uzun boşluklarda çizgi kesilir. Fareyle üzerine gelince değer ve saat görünür |
+| Limit grafiği | Oturum % ve hafta % tek eksende (0–100). 20 dk'dan uzun boşluklarda çizgi kesilir. Fareyle gezinince kesikli dikey imleç en yakın örneğe oturur; ipucunda saat, oturum % ve hafta % birlikte görünür (en çok 480 nokta gömülür) |
 | Token dağılımı | Gruplar yatay çubuk olarak, efektif token ve pay ile |
 | Oturum tablosu | Bitiş, proje klasörü, istek, efektif, en büyük grup |
 
-Raporda betik yok, dış kaynak yüklenmiyor. Açık ve koyu temayı `prefers-color-scheme` ile otomatik izliyor. Analiz bittikten sonra bellekte kalıcı bir yapı tutulmuyor.
+Raporda yalnız imleç için küçük bir inline betik var, dışarıdan hiçbir şey yüklenmiyor. Betik ipucuna yalnız `data-p` içindeki sayıları yazıyor.
+
+### Widget ipucu
+
+Fare widget yazısının üzerine gelince `display::tooltip()` metni gösterilir. Tempo ve reset bilgisi son API yanıtından gelir. Oturumun %100 tahmini ise bellekte tutulan son 6 saatlik örneklerden hesaplanır; bu tampon açılışta bu ayın CSV'sinden doldurulur. Açık ve koyu temayı `prefers-color-scheme` ile otomatik izliyor. Analiz bittikten sonra bellekte kalıcı bir yapı tutulmuyor.
 
 ## 4. Testler
 

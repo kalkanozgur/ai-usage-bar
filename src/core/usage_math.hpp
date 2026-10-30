@@ -40,6 +40,11 @@ struct Sample {
 [[nodiscard]] std::optional<Sample> parse_csv_row(std::string_view line);
 /// Monthly file name for a sample time (UTC): "usage-2026-10.csv".
 [[nodiscard]] std::string csv_file_name(std::int64_t ts);
+/// True for "usage-YYYY-MM.csv" files older than `keep_months` calendar months (UTC).
+/// keep_months <= 0 keeps everything; values below 2 are raised to 2 so the report's
+/// 8-day lookback always finds the previous month.
+[[nodiscard]] bool csv_expired(std::string_view file_name, std::int64_t now,
+                               int keep_months) noexcept;
 /// Appends one row, writing the header first when the file is new or empty.
 bool append_csv(const std::filesystem::path& file, const Sample& s);
 

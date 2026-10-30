@@ -152,6 +152,28 @@ std::string csv_file_name(std::int64_t ts) {
     return out;
 }
 
+bool csv_expired(std::string_view name, std::int64_t now, int keep_months) noexcept {
+    // usage-YYYY-MM.csv
+    if (keep_months <= 0 || name.size() != 17 || name.substr(0, 6) != "usage-" ||
+        name[10] != '-' || name.substr(13) != ".csv") {
+        return false;
+    }
+    int year = 0;
+    int month = 0;
+    if (!parse_num(name.substr(6, 4), year) || !parse_num(name.substr(11, 2), month) ||
+        month < 1 || month > 12) {
+        return false;
+    }
+    std::int64_t days = now / 86400;
+    if (now % 86400 < 0) {
+        --days;
+    }
+    const time::CivilDate c = time::civil_from_days(days);
+    const std::int64_t now_idx = c.year * 12 + static_cast<std::int64_t>(c.month) - 1;
+    const std::int64_t file_idx = static_cast<std::int64_t>(year) * 12 + month - 1;
+    return now_idx - file_idx >= std::max(keep_months, 2);
+}
+
 bool append_csv(const std::filesystem::path& file, const Sample& s) {
     std::error_code ec;
     const bool fresh = !std::filesystem::exists(file, ec) || std::filesystem::file_size(file, ec) == 0;

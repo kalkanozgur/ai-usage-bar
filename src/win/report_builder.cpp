@@ -190,19 +190,33 @@ std::vector<usage::Sample> load_samples(const AppPaths& paths, std::int64_t now)
     return out;
 }
 
-std::int32_t utc_offset_sec() {
-    TIME_ZONE_INFORMATION tz{};
-    const DWORD id = GetTimeZoneInformation(&tz);
-    LONG bias = tz.Bias;  // minutes, UTC = local + bias
-    if (id == TIME_ZONE_ID_DAYLIGHT) {
-        bias += tz.DaylightBias;
-    } else if (id == TIME_ZONE_ID_STANDARD) {
-        bias += tz.StandardBias;
+}  // namespace
+
+void prune_csv(const AppPaths& paths, int keep_months) {
+    if (keep_months <= 0) {
+        return;
     }
-    return static_cast<std::int32_t>(-bias * 60);
+    const std::int64_t now = now_unix_s();
+    std::error_code ec;
+    for (const auto& f : fs::directory_iterator(paths.data_dir, ec)) {
+        const std::string name = to_utf8(f.path().filename().wstring());
+        if (f.is_regular_file(ec) && usage::csv_expired(name, now, keep_months)) {
+            fs::remove(f.path(), ec);
+            log::write("csv pruned: " + name);
+        }
+    }
 }
 
-}  // namespace
+std::vector<usage::Sample> recent_samples(const AppPaths& paths, std::int64_t now,
+                                          std::int64_t window_sec) {
+    std::vector<usage::Sample> out;
+    for (const auto& s : load_samples(paths, now)) {
+        if (s.ts >= now - window_sec) {
+            out.push_back(s);
+        }
+    }
+    return out;
+}
 
 fs::path report_path(const AppPaths& paths) { return paths.data_dir / L"report.html"; }
 

@@ -35,6 +35,7 @@ struct Config {
     bool csv_log = true;          ///< append one CSV row per successful query
     int report_sessions = 30;     ///< newest transcripts analysed for the report
     std::wstring summary_dir;     ///< *_usage.json folder; empty → Documents\Claude-Logs
+    int csv_keep_months = 3;      ///< delete older usage-*.csv at startup; 0 = keep all
 };
 
 /// Loads the INI, writing a commented default file first if it does not exist.

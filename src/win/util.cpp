@@ -76,6 +76,18 @@ std::filesystem::path local_app_data() { return known_folder(FOLDERID_LocalAppDa
 std::filesystem::path user_profile() { return known_folder(FOLDERID_Profile); }
 std::filesystem::path documents_dir() { return known_folder(FOLDERID_Documents); }
 
+std::int32_t utc_offset_sec() {
+    TIME_ZONE_INFORMATION tz{};
+    const DWORD id = GetTimeZoneInformation(&tz);
+    LONG bias = tz.Bias;  // minutes, UTC = local + bias
+    if (id == TIME_ZONE_ID_DAYLIGHT) {
+        bias += tz.DaylightBias;
+    } else if (id == TIME_ZONE_ID_STANDARD) {
+        bias += tz.StandardBias;
+    }
+    return static_cast<std::int32_t>(-bias * 60);
+}
+
 std::filesystem::path claude_config_dir() {
     wchar_t buf[MAX_PATH];
     const DWORD n = GetEnvironmentVariableW(L"CLAUDE_CONFIG_DIR", buf, MAX_PATH);

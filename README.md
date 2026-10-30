@@ -100,6 +100,7 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 
 İlk çalıştırmada ayar dosyası `%LOCALAPPDATA%\ClaudeUsageBar\config.ini` oluşturulur. Fare kontrolleri:
 - **Sol tık:** grafik raporunu (`report.html`) oluşturur ve varsayılan tarayıcıda açar. Rapor yalnız tıklanınca hazırlanır; ayrıntı için [docs/usage-analiz.md](docs/usage-analiz.md).
+- **Fare üzerinde:** ipucu gösterir: oturum/hafta %, tempo farkı (beklenen %'ye göre önde/geride), reset saati ve oturumun %100'e ulaşma tahmini.
 - **Sağ tık:** menüyü açar. En üst satır durum bilgisidir (kaynak, son güncelleme saati veya hata mesajı). Menüde şunlar var:
   - Grafik raporunu aç
   - Kullanım sayfasını aç (claude.ai)
@@ -133,6 +134,7 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 | `oauth_refresh` | 1 | 0 yapılırsa token yenilemesi kapanır |
 | `[report] csv_log` | 1 | Her başarılı sorguyu `usage-YYYY-MM.csv`'ye yazar (yalnız sayılar) |
 | `[report] sessions` | 30 | Rapor açılırken incelenen en yeni Claude Code dökümü sayısı (1–200) |
+| `[report] csv_keep_months` | 3 | Bu kadar aydan eski `usage-*.csv` dosyaları açılışta silinir (en az 2); 0 = hiç silme |
 | `[report] summary_dir` | — | Bulut oturum özetleri (`*_usage.json`) klasörü; boşsa `Belgeler\Claude-Logs` |
 
 ## Kullanım analizi

@@ -12,7 +12,7 @@ namespace {
 
 constexpr std::int64_t kDay = 86400;
 constexpr std::int64_t kGapSec = 20 * 60;  // longer gaps (widget hidden) break the line
-constexpr int kMaxHitPoints = 160;         // hover targets per series
+constexpr std::size_t kMaxHoverPoints = 480;  // points embedded for the hover crosshair
 
 // ---- formatting -------------------------------------------------------------
 
@@ -164,7 +164,34 @@ void line_chart(std::string& o, const Input& in, const Range& r) {
              "ba\xC5\x9F" "ar\xC4\xB1l\xC4\xB1 sorguda bir \xC3\xB6rnek kaydeder.</p></figure>";
         return;
     }
-    o += "<svg viewBox=\"0 0 720 240\" role=\"img\" aria-label=\"Oturum ve hafta y\xC3\xBCzdesi\">";
+    // Hover data: [ts, session, week] (null when missing), downsampled; read by the inline script.
+    std::string pj = "[";
+    {
+        const std::size_t step = std::max<std::size_t>(1, pts.size() / kMaxHoverPoints);
+        auto val = [](const std::optional<double>& v) {
+            if (!v) {
+                return std::string("null");
+            }
+            std::array<char, 32> b{};
+            const auto r =
+                std::to_chars(b.data(), b.data() + b.size(), *v, std::chars_format::fixed, 1);
+            return std::string(b.data(), r.ptr);
+        };
+        for (std::size_t i = 0; i < pts.size(); i += step) {
+            if (pj.size() > 1) {
+                pj += ',';
+            }
+            pj += "[" + std::to_string(pts[i]->ts) + "," + val(pts[i]->session_pct) + "," +
+                  val(pts[i]->week_pct) + "]";
+        }
+        pj += "]";
+    }
+    o += "<svg class=\"lc\" viewBox=\"0 0 720 240\" role=\"img\" aria-label=\"Oturum ve hafta "
+         "y\xC3\xBCzdesi\" data-from=\"" +
+         std::to_string(from) + "\" data-to=\"" + std::to_string(to) + "\" data-off=\"" +
+         std::to_string(in.utc_offset_sec) + "\" data-l=\"" + svg_num(kL) + "\" data-pw=\"" +
+         svg_num(pw) + "\" data-t=\"" + svg_num(kT) + "\" data-ph=\"" + svg_num(ph) +
+         "\" data-p=\"" + pj + "\">";
     // grid + y labels
     for (int p = 0; p <= 100; p += 25) {
         const std::string yy = svg_num(y(p));
@@ -217,21 +244,12 @@ void line_chart(std::string& o, const Input& in, const Range& r) {
         o += "<text class=\"dl\" x=\"" + svg_num(x(last->ts) + 8) + "\" y=\"" +
              svg_num(y(lv) + (se.session ? -4 : 12)) + "\">" + se.name + " %" + fixed(lv, 0) +
              "</text>";
-        // hover targets (native tooltips)
-        const std::size_t step =
-            std::max<std::size_t>(1, pts.size() / static_cast<std::size_t>(kMaxHitPoints));
-        for (std::size_t i = 0; i < pts.size(); i += step) {
-            const auto* s = pts[i];
-            const auto& v = se.session ? s->session_pct : s->week_pct;
-            if (!v) {
-                continue;
-            }
-            o += "<circle class=\"hit\" cx=\"" + svg_num(x(s->ts)) + "\" cy=\"" + svg_num(y(*v)) +
-                 "\" r=\"6\"><title>" + std::string(se.name) + " %" + fixed(*v, 1) + " \xC2\xB7 " +
-                 fmt_dt(s->ts, in.utc_offset_sec) + "</title></circle>";
-        }
     }
-    o += "</svg><div class=\"legend\"><span><i style=\"background:var(--s1)\"></i>Oturum (5 saat)"
+    // crosshair + markers, moved by the inline script; parked off-canvas until hovered
+    o += "<line class=\"xh\" x1=\"-10\" x2=\"-10\" y1=\"" + svg_num(kT) + "\" y2=\"" +
+         svg_num(kT + ph) + "\"/><circle class=\"xm s\" cx=\"-10\" cy=\"0\" r=\"4\"/>"
+         "<circle class=\"xm w\" cx=\"-10\" cy=\"0\" r=\"4\"/>";
+    o += "</svg><div class=\"tip\" hidden></div><div class=\"legend\"><span><i style=\"background:var(--s1)\"></i>Oturum (5 saat)"
          "</span><span><i style=\"background:var(--s2)\"></i>Hafta (7 g\xC3\xBCn)</span></div>"
          "</figure>";
 }
@@ -340,6 +358,33 @@ void rate_card(std::string& o, const Input& in) {
     o += "</div>";
 }
 
+// Crosshair for every limit chart. Only numbers from data-p are written into the tooltip.
+constexpr const char* kHoverJs = R"JS(
+document.querySelectorAll('svg.lc').forEach(function(svg){
+var d=svg.dataset,P=JSON.parse(d.p),f=+d.from,t=+d.to,off=+d.off,L=+d.l,W=+d.pw,T=+d.t,H=+d.ph;
+var fig=svg.parentNode,tip=fig.querySelector('.tip'),xh=svg.querySelector('.xh'),ms=svg.querySelector('.xm.s'),mw=svg.querySelector('.xm.w');
+function X(s){return L+W*(s-f)/(t-f)}
+function Y(p){return T+H*(1-Math.max(0,Math.min(100,p))/100)}
+function z(n){return(n<10?'0':'')+n}
+function fmt(s){var x=new Date((s+off)*1000);return z(x.getUTCDate())+'.'+z(x.getUTCMonth()+1)+' '+z(x.getUTCHours())+':'+z(x.getUTCMinutes())}
+function pc(v){return v==null?'\u2014':'%'+v.toFixed(1).replace('.',',')}
+function park(){tip.hidden=true;[xh].forEach(function(l){l.setAttribute('x1',-10);l.setAttribute('x2',-10)});ms.setAttribute('cx',-10);mw.setAttribute('cx',-10)}
+svg.addEventListener('mousemove',function(e){
+var r=svg.getBoundingClientRect(),vx=(e.clientX-r.left)/r.width*720;
+if(vx<L||vx>L+W||!P.length){park();return}
+var s=f+(vx-L)/W*(t-f),lo=0,hi=P.length-1;
+while(hi-lo>1){var m=(lo+hi)>>1;if(P[m][0]<s)lo=m;else hi=m}
+var p=Math.abs(P[lo][0]-s)<=Math.abs(P[hi][0]-s)?P[lo]:P[hi],x=X(p[0]);
+xh.setAttribute('x1',x);xh.setAttribute('x2',x);
+[[ms,p[1]],[mw,p[2]]].forEach(function(a){if(a[1]==null)a[0].setAttribute('cx',-10);else{a[0].setAttribute('cx',x);a[0].setAttribute('cy',Y(a[1]))}});
+tip.innerHTML='<b>'+fmt(p[0])+'</b><br><i class="k s"></i>Oturum '+pc(p[1])+'<br><i class="k w"></i>Hafta '+pc(p[2]);
+tip.hidden=false;
+var fr=fig.getBoundingClientRect(),px=r.left-fr.left+x/720*r.width,left=px+12;
+if(left+tip.offsetWidth>fr.width-8)left=px-12-tip.offsetWidth;
+tip.style.left=left+'px';tip.style.top=(r.top-fr.top+8)+'px'});
+svg.addEventListener('mouseleave',park)});
+)JS";
+
 constexpr const char* kCss = R"CSS(
 :root{color-scheme:light;--bg:#f6f6f4;--surface:#fcfcfb;--text:#0b0b0b;--text2:#52514e;--muted:#7a7974;--grid:#e4e3df;--border:#dddcd7;--s1:#2a78d6;--s2:#eb6834;--track:#ecebe7}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#121211;--surface:#1a1a19;--text:#f0efec;--text2:#c3c2b7;--muted:#8f8e86;--grid:#2c2c2a;--border:#323230;--s1:#3987e5;--s2:#d95926;--track:#262624}}
@@ -364,7 +409,11 @@ svg{width:100%;height:auto;display:block}
 .grid{stroke:var(--grid);stroke-width:1}.axis{fill:var(--muted);font-size:11px}
 .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .end{stroke:var(--surface);stroke-width:2}.dl{fill:var(--text2);font-size:11px}
-.hit{fill:transparent}.hit:hover{fill:var(--text2);fill-opacity:.25}
+.chart{position:relative}
+.xh{stroke:var(--text2);stroke-width:1;stroke-dasharray:3 3}
+.xm{stroke:var(--surface);stroke-width:2}.xm.s{fill:var(--s1)}.xm.w{fill:var(--s2)}
+.tip{position:absolute;z-index:2;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tip .k{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}.tip .k.s{background:var(--s1)}.tip .k.w{background:var(--s2)}
 .legend{display:flex;gap:16px;color:var(--text2);font-size:12px;margin-top:6px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
 .bars{display:grid;gap:6px}
@@ -474,7 +523,9 @@ std::string render_html(const Input& in) {
     }
     o += "<footer>Efektif = girdi + 0,1\xC3\x97\xC3\xB6nbellek okuma + 2\xC3\x97\xC3\xB6nbellek "
          "yazma + 5\xC3\x97\xC3\xA7\xC4\xB1kt\xC4\xB1. Yaln\xC4\xB1z say\xC4\xB1lar ve ara\xC3\xA7 "
-         "adlar\xC4\xB1 okunur; mesaj metni saklanmaz.</footer></main></body></html>";
+         "adlar\xC4\xB1 okunur; mesaj metni saklanmaz.</footer></main><script>";
+    o += kHoverJs;
+    o += "</script></body></html>";
     return o;
 }
 
