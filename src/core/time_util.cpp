@@ -106,4 +106,20 @@ std::string format_remaining(std::int64_t seconds) {
     return buf;
 }
 
+std::string format_iso8601_utc(std::int64_t unix_seconds) {
+    std::int64_t days = unix_seconds / 86400;
+    std::int64_t rem = unix_seconds % 86400;
+    if (rem < 0) {
+        rem += 86400;
+        --days;
+    }
+    const CivilDate c = civil_from_days(days);
+    char buf[32];
+    std::snprintf(buf, sizeof buf, "%04lld-%02u-%02uT%02lld:%02lld:%02lldZ",
+                  static_cast<long long>(c.year), c.month, c.day,
+                  static_cast<long long>(rem / 3600), static_cast<long long>(rem / 60 % 60),
+                  static_cast<long long>(rem % 60));
+    return buf;
+}
+
 }  // namespace cub::time

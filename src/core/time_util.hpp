@@ -18,6 +18,29 @@ namespace cub::time {
     return era * 146097 + static_cast<std::int64_t>(doe) - 719468;
 }
 
+struct CivilDate {
+    std::int64_t year = 1970;
+    unsigned month = 1;
+    unsigned day = 1;
+};
+
+/// Inverse of days_from_civil (H. Hinnant's algorithm).
+[[nodiscard]] constexpr CivilDate civil_from_days(std::int64_t z) noexcept {
+    z += 719468;
+    const std::int64_t era = (z >= 0 ? z : z - 146096) / 146097;
+    const auto doe = static_cast<unsigned>(z - era * 146097);
+    const unsigned yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    const unsigned doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    const unsigned mp = (5 * doy + 2) / 153;
+    const unsigned d = doy - (153 * mp + 2) / 5 + 1;
+    const unsigned m = mp < 10 ? mp + 3 : mp - 9;
+    const std::int64_t y = static_cast<std::int64_t>(yoe) + era * 400 + (m <= 2 ? 1 : 0);
+    return CivilDate{y, m, d};
+}
+
+/// Unix seconds → "YYYY-MM-DDTHH:MM:SSZ".
+[[nodiscard]] std::string format_iso8601_utc(std::int64_t unix_seconds);
+
 /// Parses "YYYY-MM-DDTHH:MM:SS[.frac][Z|+HH:MM|-HH:MM|+HHMM]" into Unix seconds (UTC).
 /// A missing zone designator is treated as UTC.
 [[nodiscard]] std::optional<std::int64_t> parse_iso8601(std::string_view s) noexcept;

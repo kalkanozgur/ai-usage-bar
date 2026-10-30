@@ -22,6 +22,8 @@ src/core/   Platformdan bağımsız mantık, Linux'ta da derlenir ve test edilir
   credentials     .credentials.json ayrıştırma ve 3 alanı byte-korumalı yamalama
   display         snapshot → iki satır + renk seviyesi
   process_kind    claude.exe yolu → Desktop / CLI ayrımı
+  usage_math      limit örnekleri: CSV satırı, tempo, %100 tahmini, oturum→hafta kuru
+  usage_breakdown oturum dökümü (.jsonl) → token dağılımı (gruplar), oturum özeti JSON
 src/win/    Win32 katmanı
   app             pencere, 1 sn timer, menü, worker thread (condition_variable)
   renderer        UpdateLayeredWindow, per-pixel alpha, gri tonlamalı AA

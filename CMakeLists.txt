@@ -30,7 +30,9 @@ add_library(cub_core STATIC
     src/core/display.cpp
     src/core/json_lite.cpp
     src/core/process_kind.cpp
-    src/core/time_util.cpp)
+    src/core/time_util.cpp
+    src/core/usage_breakdown.cpp
+    src/core/usage_math.cpp)
 target_include_directories(cub_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 cub_enable_warnings(cub_core)
 
