@@ -10,9 +10,11 @@
 #include <optional>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "core/api.hpp"
 #include "core/display.hpp"
+#include "core/usage_math.hpp"
 #include "win/config.hpp"
 #include "win/process_watch.hpp"
 #include "win/renderer.hpp"
@@ -39,6 +41,8 @@ private:
     void show_menu();
     void paste_session_key();
     void open_report();
+    void create_tooltip();
+    [[nodiscard]] std::wstring tooltip_text();
     void toggle_autostart();
     [[nodiscard]] bool autostart_enabled() const;
     void update_theme();
@@ -53,6 +57,8 @@ private:
 
     HINSTANCE instance_;
     HWND hwnd_ = nullptr;
+    HWND tip_ = nullptr;     ///< hover tooltip (owned by hwnd_)
+    std::wstring tip_text_;  ///< buffer handed to TTN_GETDISPINFO
     AppPaths paths_;
     const Config cfg_;  // read-only after construction → safe to share with the worker
     ProcessWatch watch_;
@@ -80,6 +86,7 @@ private:
     SYSTEMTIME last_ok_local_{};
     std::string source_;
     std::string last_error_;
+    std::vector<usage::Sample> recent_;  ///< last few hours, for the hover projection
 
     std::thread worker_;
     std::atomic<bool> worker_done_{false};

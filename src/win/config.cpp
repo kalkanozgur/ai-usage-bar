@@ -45,6 +45,8 @@ constexpr const char* kDefaultIni =
     "[report]\r\n"
     "; 1 = log every successful query to usage-YYYY-MM.csv (numbers only)\r\n"
     "csv_log=1\r\n"
+    "; months of usage-*.csv to keep (older files are deleted at startup); 0 = keep all\r\n"
+    "csv_keep_months=3\r\n"
     "; newest Claude Code transcripts analysed when the chart opens (1-200)\r\n"
     "sessions=30\r\n"
     "; folder with cloud-session summaries (*_usage.json); empty = Documents\\Claude-Logs\r\n"
@@ -116,6 +118,7 @@ Config load_config(const std::filesystem::path& ini) {
     c.csv_log = get_int(ini, L"report", L"csv_log", 1) != 0;
     c.report_sessions = std::clamp(get_int(ini, L"report", L"sessions", c.report_sessions), 1, 200);
     c.summary_dir = get_str(ini, L"report", L"summary_dir", L"");
+    c.csv_keep_months = std::max(0, get_int(ini, L"report", L"csv_keep_months", 3));
     return c;
 }
 

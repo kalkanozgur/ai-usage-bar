@@ -1,8 +1,10 @@
 #include "win/app.hpp"
 
+#include <commctrl.h>
 #include <shellapi.h>
 #include <shellscalingapi.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cwchar>
 #include <exception>
@@ -27,6 +29,7 @@ constexpr UINT_PTR kTickTimer = 1;
 constexpr UINT kTickMs = 1000;
 constexpr UINT WM_APP_DATA = WM_APP + 1;
 constexpr UINT WM_APP_REPORT = WM_APP + 2;  // wParam: 1 = report.html ready
+constexpr std::int64_t kRecentSec = 6 * 3600;  // samples kept in memory for the tooltip
 constexpr std::int64_t kMinFetchGapMs = 30'000;  // Desktop reopened quickly → don't re-poll
 
 enum MenuId : UINT {
@@ -95,7 +98,43 @@ App::App(HINSTANCE instance, AppPaths paths, Config cfg)
     if (hwnd_ == nullptr) {
         log::write("CreateWindowExW failed: " + error_text(GetLastError()));
     }
+    create_tooltip();
     worker_ = std::thread(&App::worker_loop, this);
+}
+
+void App::create_tooltip() {
+    if (hwnd_ == nullptr) {
+        return;
+    }
+    INITCOMMONCONTROLSEX icc{};
+    icc.dwSize = sizeof icc;
+    icc.dwICC = ICC_WIN95_CLASSES;
+    InitCommonControlsEx(&icc);
+    tip_ = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, nullptr,
+                           WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP, CW_USEDEFAULT, CW_USEDEFAULT,
+                           CW_USEDEFAULT, CW_USEDEFAULT, hwnd_, nullptr, instance_, nullptr);
+    if (tip_ == nullptr) {
+        log::write("tooltip create failed: " + error_text(GetLastError()));
+        return;
+    }
+    TTTOOLINFOW ti{};
+    ti.cbSize = sizeof ti;
+    ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+    ti.hwnd = hwnd_;
+    ti.uId = reinterpret_cast<UINT_PTR>(hwnd_);
+    ti.lpszText = LPSTR_TEXTCALLBACKW;
+    SendMessageW(tip_, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&ti));
+    SendMessageW(tip_, TTM_SETMAXTIPWIDTH, 0, 520);  // enables '\n' line breaks
+    SendMessageW(tip_, TTM_SETDELAYTIME, TTDT_AUTOPOP, MAKELPARAM(30000, 0));
+}
+
+std::wstring App::tooltip_text() {
+    const std::lock_guard lock(mtx_);
+    if (!snapshot_) {
+        return last_error_.empty() ? std::wstring(L"Henüz veri yok")
+                                   : L"Hata: " + to_wide(last_error_);
+    }
+    return to_wide(display::tooltip(*snapshot_, recent_, now_unix_s(), utc_offset_sec()));
 }
 
 App::~App() {
@@ -162,6 +201,16 @@ LRESULT App::handle(UINT msg, WPARAM wp, LPARAM lp) {
             }
             return 0;
         case WM_RBUTTONUP: show_menu(); return 0;
+        case WM_NOTIFY: {
+            const auto* hdr = reinterpret_cast<const NMHDR*>(lp);
+            if (hdr != nullptr && hdr->hwndFrom == tip_ && hdr->code == TTN_GETDISPINFOW) {
+                auto* di = reinterpret_cast<NMTTDISPINFOW*>(lp);
+                tip_text_ = tooltip_text();
+                di->lpszText = tip_text_.data();
+                return 0;
+            }
+            return DefWindowProcW(hwnd_, msg, wp, lp);
+        }
         case WM_SETTINGCHANGE:
             if (lp != 0 && std::wcscmp(reinterpret_cast<const wchar_t*>(lp), L"ImmersiveColorSet") == 0) {
                 update_theme();
@@ -434,6 +483,12 @@ void App::request_refresh() {
 }
 
 void App::worker_loop() {
+    prune_csv(paths_, cfg_.csv_keep_months);
+    {
+        auto seed = recent_samples(paths_, now_unix_s(), kRecentSec);
+        const std::lock_guard seed_lock(mtx_);
+        recent_ = std::move(seed);
+    }
     UsageFetcher fetcher(cfg_, paths_);
     const std::int64_t refresh_ms = static_cast<std::int64_t>(cfg_.refresh_sec) * 1000;
     // hwnd_ is set before this thread starts and the UI thread may null it on exit;
@@ -458,14 +513,22 @@ void App::worker_loop() {
 
         lock.unlock();
         FetchResult r = fetcher.fetch();
-        if (r.snapshot && cfg_.csv_log) {
-            const std::int64_t ts = now_unix_s();
-            if (!usage::append_csv(csv_path(paths_, ts), usage::from_snapshot(ts, *r.snapshot))) {
+        std::optional<usage::Sample> sample;
+        if (r.snapshot) {
+            sample = usage::from_snapshot(now_unix_s(), *r.snapshot);
+            if (cfg_.csv_log && !usage::append_csv(csv_path(paths_, sample->ts), *sample)) {
                 log::write("csv append failed");
             }
         }
         lock.lock();
 
+        if (sample) {
+            recent_.push_back(*sample);
+            const std::int64_t keep_from = sample->ts - kRecentSec;
+            recent_.erase(recent_.begin(),
+                          std::find_if(recent_.begin(), recent_.end(),
+                                       [&](const usage::Sample& s) { return s.ts >= keep_from; }));
+        }
         if (r.snapshot) {
             snapshot_ = std::move(r.snapshot);
             source_ = std::move(r.source);

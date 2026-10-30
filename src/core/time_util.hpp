@@ -38,6 +38,11 @@ struct CivilDate {
     return CivilDate{y, m, d};
 }
 
+/// Local wall clock for `ts` ("21:40"), prefixed with the Turkish weekday ("Pzt 10:00") when it
+/// falls on a different local day than `now`.
+[[nodiscard]] std::string format_local_clock(std::int64_t ts, std::int64_t now,
+                                             std::int32_t utc_offset_sec);
+
 /// Unix seconds → "YYYY-MM-DDTHH:MM:SSZ".
 [[nodiscard]] std::string format_iso8601_utc(std::int64_t unix_seconds);
 

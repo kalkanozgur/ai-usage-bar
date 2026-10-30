@@ -68,7 +68,7 @@ if(WIN32)
         UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX
         _WIN32_WINNT=0x0A00 WINVER=0x0A00)
     target_link_libraries(claude-usage-bar PRIVATE
-        cub_core winhttp crypt32 shcore shell32 ole32 uuid advapi32 user32 gdi32)
+        cub_core winhttp crypt32 shcore shell32 ole32 uuid advapi32 user32 gdi32 comctl32)
     cub_enable_warnings(claude-usage-bar)
 
     if(MSVC)

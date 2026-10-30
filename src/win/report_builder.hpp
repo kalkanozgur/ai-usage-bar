@@ -7,6 +7,9 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
+
+#include "core/usage_math.hpp"
 
 #include "win/config.hpp"
 #include "win/usage_fetcher.hpp"
@@ -19,6 +22,13 @@ namespace cub::win {
 /// Builds %LOCALAPPDATA%\ClaudeUsageBar\report.html. Transcript results are cached by
 /// (path, mtime, size) in breakdown-cache.jsonl so only new or changed sessions are parsed.
 /// Returns false (and a short reason) on failure or when `stop` was raised.
+/// Deletes usage-YYYY-MM.csv files older than `keep_months` (see usage::csv_expired).
+void prune_csv(const AppPaths& paths, int keep_months);
+
+/// Latest samples from this month's CSV (used to seed the hover projection after a restart).
+[[nodiscard]] std::vector<usage::Sample> recent_samples(const AppPaths& paths,
+                                                        std::int64_t now, std::int64_t window_sec);
+
 bool build_report(const AppPaths& paths, const Config& cfg, const std::atomic<bool>& stop,
                   std::string& error);
 

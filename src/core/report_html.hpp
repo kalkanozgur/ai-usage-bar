@@ -1,4 +1,5 @@
-// Self-contained HTML report (inline SVG + CSS, no scripts, no network) for the left-click view.
+// Self-contained HTML report (inline SVG + CSS + one small inline script, no network)
+// for the left-click view.
 //
 // Views (radio tabs, default "Bu hafta"):
 //   Son oturum · Bugün · Bu hafta

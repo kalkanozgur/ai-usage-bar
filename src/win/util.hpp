@@ -21,6 +21,8 @@ namespace cub::win {
 [[nodiscard]] std::filesystem::path local_app_data();
 [[nodiscard]] std::filesystem::path user_profile();
 [[nodiscard]] std::filesystem::path documents_dir();
+/// Current local offset from UTC in seconds (DST aware).
+[[nodiscard]] std::int32_t utc_offset_sec();
 /// Claude Code's config folder: %CLAUDE_CONFIG_DIR%, else %USERPROFILE%\.claude
 [[nodiscard]] std::filesystem::path claude_config_dir();
 
