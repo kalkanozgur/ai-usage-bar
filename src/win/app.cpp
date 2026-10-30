@@ -5,8 +5,11 @@
 
 #include <chrono>
 #include <cwchar>
+#include <exception>
 
+#include "core/usage_math.hpp"
 #include "win/log.hpp"
+#include "win/report_builder.hpp"
 #include "win/secret_store.hpp"
 #include "win/taskbar.hpp"
 #include "win/util.hpp"
@@ -23,10 +26,12 @@ constexpr wchar_t kRunValue[] = L"ClaudeUsageBar";
 constexpr UINT_PTR kTickTimer = 1;
 constexpr UINT kTickMs = 1000;
 constexpr UINT WM_APP_DATA = WM_APP + 1;
+constexpr UINT WM_APP_REPORT = WM_APP + 2;  // wParam: 1 = report.html ready
 constexpr std::int64_t kMinFetchGapMs = 30'000;  // Desktop reopened quickly → don't re-poll
 
 enum MenuId : UINT {
     kIdOpen = 100,
+    kIdReport,
     kIdRefresh,
     kIdPasteKey,
     kIdClearKey,
@@ -94,6 +99,10 @@ App::App(HINSTANCE instance, AppPaths paths, Config cfg)
 }
 
 App::~App() {
+    report_stop_ = true;
+    if (report_thread_.joinable()) {
+        report_thread_.join();  // stops at the next line batch / file
+    }
     stop_worker();
     if (hwnd_ != nullptr) {
         DestroyWindow(hwnd_);
@@ -143,8 +152,14 @@ LRESULT App::handle(UINT msg, WPARAM wp, LPARAM lp) {
             on_tick();
             return 0;
         case WM_MOUSEACTIVATE: return MA_NOACTIVATE;
-        case WM_LBUTTONUP:
-            ShellExecuteW(nullptr, L"open", kUsageUrl, nullptr, nullptr, SW_SHOWNORMAL);
+        case WM_LBUTTONUP: open_report(); return 0;
+        case WM_APP_REPORT:
+            if (wp != 0) {
+                open_path(report_path(paths_));
+            } else {
+                MessageBoxW(hwnd_, L"Grafik raporu oluşturulamadı. Ayrıntı için log dosyasına bakın.",
+                            kAppTitle, MB_ICONWARNING | MB_OK);
+            }
             return 0;
         case WM_RBUTTONUP: show_menu(); return 0;
         case WM_SETTINGCHANGE:
@@ -273,6 +288,8 @@ void App::show_menu() {
 
     AppendMenuW(m, MF_STRING | MF_GRAYED, 0, status.c_str());
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(m, MF_STRING | (report_busy_ ? MF_GRAYED : 0), kIdReport,
+                L"Grafik raporunu aç");
     AppendMenuW(m, MF_STRING, kIdOpen, L"Kullanım sayfasını aç");
     AppendMenuW(m, MF_STRING, kIdRefresh, L"Şimdi yenile");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
@@ -297,6 +314,7 @@ void App::show_menu() {
 
     switch (cmd) {
         case kIdOpen: ShellExecuteW(nullptr, L"open", kUsageUrl, nullptr, nullptr, SW_SHOWNORMAL); break;
+        case kIdReport: open_report(); break;
         case kIdRefresh: request_refresh(); break;
         case kIdPasteKey: paste_session_key(); break;
         case kIdClearKey:
@@ -350,6 +368,32 @@ void App::paste_session_key() {
     } else {
         log::write("secret::save failed: " + error_text(GetLastError()));
     }
+}
+
+void App::open_report() {
+    if (report_busy_.exchange(true)) {
+        return;  // already building; the browser opens when it is done
+    }
+    if (report_thread_.joinable()) {
+        report_thread_.join();  // previous run has finished (busy was false)
+    }
+    const HWND notify = hwnd_;
+    report_thread_ = std::thread([this, notify] {
+        std::string err;
+        bool ok = false;
+        try {
+            ok = build_report(paths_, cfg_, report_stop_, err);
+        } catch (const std::exception& e) {
+            err = e.what();
+        }
+        if (!ok) {
+            log::write("report failed: " + err);
+        }
+        report_busy_ = false;
+        if (!report_stop_ && notify != nullptr) {
+            PostMessageW(notify, WM_APP_REPORT, static_cast<WPARAM>(ok), 0);
+        }
+    });
 }
 
 bool App::autostart_enabled() const {
@@ -414,6 +458,12 @@ void App::worker_loop() {
 
         lock.unlock();
         FetchResult r = fetcher.fetch();
+        if (r.snapshot && cfg_.csv_log) {
+            const std::int64_t ts = now_unix_s();
+            if (!usage::append_csv(csv_path(paths_, ts), usage::from_snapshot(ts, *r.snapshot))) {
+                log::write("csv append failed");
+            }
+        }
         lock.lock();
 
         if (r.snapshot) {

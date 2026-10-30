@@ -30,6 +30,7 @@ add_library(cub_core STATIC
     src/core/display.cpp
     src/core/json_lite.cpp
     src/core/process_kind.cpp
+    src/core/report_html.cpp
     src/core/time_util.cpp
     src/core/usage_breakdown.cpp
     src/core/usage_math.cpp)
@@ -55,6 +56,7 @@ if(WIN32)
         src/win/main.cpp
         src/win/process_watch.cpp
         src/win/renderer.cpp
+        src/win/report_builder.cpp
         src/win/secret_store.cpp
         src/win/taskbar.cpp
         src/win/usage_fetcher.cpp

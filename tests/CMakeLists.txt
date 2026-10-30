@@ -16,6 +16,7 @@ add_executable(cub_tests
     test_display.cpp
     test_json.cpp
     test_process_kind.cpp
+    test_report_html.cpp
     test_time.cpp
     test_usage_breakdown.cpp
     test_usage_math.cpp)
