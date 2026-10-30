@@ -137,11 +137,3 @@ TEST(UsageMath, CsvRetention) {
     EXPECT_FALSE(u::csv_expired("usage-2026-13.csv", now, 3));
     EXPECT_FALSE(u::csv_expired("usage-2026-07.csv.bak", now, 3));
 }
-
-TEST(UsageMath, LocalClock) {
-    using cub::time::format_local_clock;
-    const std::int64_t now = 1793383200;  // Fri 2026-10-30 18:00Z = 21:00 TSİ
-    EXPECT_EQ(format_local_clock(now + 40 * 60, now, 3 * 3600), "21:40");
-    EXPECT_EQ(format_local_clock(now + 4 * 3600, now, 3 * 3600), "Cmt 01:00");
-    EXPECT_EQ(format_local_clock(now + 3 * 86400, now, 0), "Pzt 18:00");
-}

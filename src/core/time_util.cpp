@@ -122,31 +122,4 @@ std::string format_iso8601_utc(std::int64_t unix_seconds) {
     return buf;
 }
 
-std::string format_local_clock(std::int64_t ts, std::int64_t now, std::int32_t utc_offset_sec) {
-    auto split = [&](std::int64_t t, std::int64_t& day) {
-        t += utc_offset_sec;
-        day = t / 86400;
-        std::int64_t rem = t % 86400;
-        if (rem < 0) {
-            rem += 86400;
-            --day;
-        }
-        return rem;
-    };
-    std::int64_t day = 0;
-    std::int64_t today = 0;
-    const std::int64_t rem = split(ts, day);
-    split(now, today);
-    char buf[32];
-    std::snprintf(buf, sizeof buf, "%02lld:%02lld", static_cast<long long>(rem / 3600),
-                  static_cast<long long>(rem / 60 % 60));
-    if (day == today) {
-        return buf;
-    }
-    static constexpr const char* kNames[7] = {"Paz", "Pzt", "Sal", "\xC3\x87" "ar",
-                                              "Per", "Cum", "Cmt"};
-    const auto wd = static_cast<std::size_t>(((day % 7) + 11) % 7);  // 1970-01-01 = Thursday
-    return std::string(kNames[wd]) + " " + buf;
-}
-
 }  // namespace cub::time

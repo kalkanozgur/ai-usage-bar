@@ -100,7 +100,6 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 
 İlk çalıştırmada ayar dosyası `%LOCALAPPDATA%\ClaudeUsageBar\config.ini` oluşturulur. Fare kontrolleri:
 - **Sol tık:** grafik raporunu (`report.html`) oluşturur ve varsayılan tarayıcıda açar. Rapor yalnız tıklanınca hazırlanır; ayrıntı için [docs/usage-analiz.md](docs/usage-analiz.md).
-- **Fare üzerinde:** ipucu gösterir: oturum/hafta %, tempo farkı (beklenen %'ye göre önde/geride), reset saati ve oturumun %100'e ulaşma tahmini.
 - **Sağ tık:** menüyü açar. En üst satır durum bilgisidir (kaynak, son güncelleme saati veya hata mesajı). Menüde şunlar var:
   - Grafik raporunu aç
   - Kullanım sayfasını aç (claude.ai)
