@@ -21,6 +21,9 @@ struct Config {
     int font_pt = 9;
     double warn_pct = 75.0;
     double crit_pct = 90.0;
+    bool color_pace = true;     ///< color by pace (true) or by warn_pct thresholds (false)
+    double pace_margin = 5.0;   ///< points ahead of even spend before turning orange
+    double pace_min_pct = 25.0; ///< no pace warning below this usage
     bool show_sonnet = false;
     Visibility visibility = Visibility::DesktopWindow;
     std::wstring desktop_path_hint;  ///< extra install dir substring for Claude Desktop

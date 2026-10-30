@@ -48,4 +48,7 @@ struct CivilDate {
 /// Compact Turkish countdown: "2g05s", "3s07dk", "12dk". Negative input clamps to "0dk".
 [[nodiscard]] std::string format_remaining(std::int64_t seconds);
 
+/// Compact English countdown for the taskbar: "2d05h", "3h07m", "12m". Negative → "0m".
+[[nodiscard]] std::string format_remaining_en(std::int64_t seconds);
+
 }  // namespace cub::time

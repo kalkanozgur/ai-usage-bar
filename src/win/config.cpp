@@ -25,6 +25,11 @@ constexpr const char* kDefaultIni =
     "manual_right_px=-1\r\n"
     "font_name=Segoe UI\r\n"
     "font_pt=9\r\n"
+    "; pace = orange when on track to hit 100% before the reset | threshold = orange at warn_pct\r\n"
+    "color_mode=pace\r\n"
+    "pace_margin=5\r\n"
+    "pace_min_pct=25\r\n"
+    "; red at crit_pct in both modes; warn_pct is used by color_mode=threshold\r\n"
     "warn_pct=75\r\n"
     "crit_pct=90\r\n"
     "show_sonnet=0\r\n"
@@ -96,6 +101,9 @@ Config load_config(const std::filesystem::path& ini) {
     c.font_pt = std::clamp(get_int(ini, L"display", L"font_pt", c.font_pt), 6, 20);
     c.warn_pct = get_int(ini, L"display", L"warn_pct", 75);
     c.crit_pct = get_int(ini, L"display", L"crit_pct", 90);
+    c.color_pace = get_str(ini, L"display", L"color_mode", L"pace") != L"threshold";
+    c.pace_margin = std::clamp(get_int(ini, L"display", L"pace_margin", 5), 0, 50);
+    c.pace_min_pct = std::clamp(get_int(ini, L"display", L"pace_min_pct", 25), 0, 100);
     c.show_sonnet = get_int(ini, L"display", L"show_sonnet", 0) != 0;
     const std::wstring vis = get_str(ini, L"display", L"visibility", L"desktop_window");
     if (vis == L"desktop_process") {
