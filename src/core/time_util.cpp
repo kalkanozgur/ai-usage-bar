@@ -114,7 +114,7 @@ std::string format_iso8601_utc(std::int64_t unix_seconds) {
         --days;
     }
     const CivilDate c = civil_from_days(days);
-    char buf[32];
+    char buf[96];  // sized for the widest int64 fields so -Wformat-truncation stays quiet
     std::snprintf(buf, sizeof buf, "%04lld-%02u-%02uT%02lld:%02lld:%02lldZ",
                   static_cast<long long>(c.year), c.month, c.day,
                   static_cast<long long>(rem / 3600), static_cast<long long>(rem / 60 % 60),
