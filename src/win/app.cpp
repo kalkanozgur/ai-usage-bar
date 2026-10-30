@@ -157,7 +157,7 @@ LRESULT App::handle(UINT msg, WPARAM wp, LPARAM lp) {
             if (wp != 0) {
                 open_path(report_path(paths_));
             } else {
-                MessageBoxW(hwnd_, L"Grafik raporu oluşturulamadı. Ayrıntı için log dosyasına bakın.",
+                MessageBoxW(hwnd_, L"Could not build the usage report. See the log file for details.",
                             kAppTitle, MB_ICONWARNING | MB_OK);
             }
             return 0;
@@ -277,15 +277,15 @@ std::wstring App::status_line() {
         if (e.size() > 80) {
             e = e.substr(0, 77) + L"...";
         }
-        return L"Hata: " + e;
+        return L"Error: " + e;
     }
     if (!snapshot_) {
-        return L"Henüz veri yok";
+        return L"No data yet";
     }
     wchar_t hhmm[16];
     std::swprintf(hhmm, 16, L"%02u:%02u", static_cast<unsigned>(last_ok_local_.wHour),
                   static_cast<unsigned>(last_ok_local_.wMinute));
-    return L"Kaynak: " + to_wide(source_) + L" · son güncelleme " + hhmm;
+    return L"Source: " + to_wide(source_) + L" · last update " + hhmm;
 }
 
 void App::show_menu() {
@@ -296,19 +296,19 @@ void App::show_menu() {
     AppendMenuW(m, MF_STRING | MF_GRAYED, 0, status.c_str());
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(m, MF_STRING | (report_busy_ ? MF_GRAYED : 0), kIdReport,
-                L"Grafik raporunu aç");
-    AppendMenuW(m, MF_STRING, kIdOpen, L"Kullanım sayfasını aç");
-    AppendMenuW(m, MF_STRING, kIdRefresh, L"Şimdi yenile");
+                L"Open usage report");
+    AppendMenuW(m, MF_STRING, kIdOpen, L"Open usage page (claude.ai)");
+    AppendMenuW(m, MF_STRING, kIdRefresh, L"Refresh now");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING, kIdPasteKey, L"sessionKey'i panodan kaydet");
-    AppendMenuW(m, MF_STRING | (has_key ? 0 : MF_GRAYED), kIdClearKey, L"Kayıtlı sessionKey'i sil");
+    AppendMenuW(m, MF_STRING, kIdPasteKey, L"Save sessionKey from clipboard");
+    AppendMenuW(m, MF_STRING | (has_key ? 0 : MF_GRAYED), kIdClearKey, L"Delete saved sessionKey");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(m, MF_STRING | (autostart_enabled() ? MF_CHECKED : 0), kIdAutostart,
-                L"Windows ile başlat");
-    AppendMenuW(m, MF_STRING, kIdConfig, L"Ayar dosyasını aç");
-    AppendMenuW(m, MF_STRING, kIdLog, L"Log dosyasını aç");
+                L"Start with Windows");
+    AppendMenuW(m, MF_STRING, kIdConfig, L"Open settings file");
+    AppendMenuW(m, MF_STRING, kIdLog, L"Open log file");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING, kIdExit, L"Çıkış");
+    AppendMenuW(m, MF_STRING, kIdExit, L"Exit");
 
     POINT pt{};
     GetCursorPos(&pt);
@@ -358,7 +358,7 @@ void App::paste_session_key() {
         CloseClipboard();
     }
     if (text.rfind(L"sk-ant-", 0) != 0) {
-        MessageBoxW(hwnd_, L"Panoda geçerli bir sessionKey yok (\"sk-ant-\" ile başlamalı).",
+        MessageBoxW(hwnd_, L"No valid sessionKey on the clipboard (it must start with \"sk-ant-\").",
                     kAppTitle, MB_ICONWARNING | MB_OK);
         return;
     }
@@ -367,8 +367,8 @@ void App::paste_session_key() {
     const bool ok = secret::save(paths_.session_key, utf8);
     SecureZeroMemory(utf8.data(), utf8.size());
     MessageBoxW(hwnd_,
-                ok ? L"sessionKey Windows hesabına bağlı olarak şifrelendi ve kaydedildi."
-                   : L"sessionKey kaydedilemedi. Ayrıntı için log dosyasına bakın.",
+                ok ? L"sessionKey encrypted for this Windows account and saved."
+                   : L"Could not save the sessionKey. See the log file for details.",
                 kAppTitle, (ok ? MB_ICONINFORMATION : MB_ICONERROR) | MB_OK);
     if (ok) {
         request_refresh();

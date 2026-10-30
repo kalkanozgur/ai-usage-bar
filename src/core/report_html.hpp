@@ -1,8 +1,8 @@
 // Self-contained HTML report (inline SVG + CSS + one small inline script, no network)
 // for the left-click view.
 //
-// Views (radio tabs, default "Bu hafta"):
-//   Son oturum · Bugün · Bu hafta
+// Views (radio tabs, default "This week"):
+//   Last session · Today · This week
 // Each view: limit time series (session % + week %), token breakdown by group, session table.
 // Only numbers, tool-group names and project folder names appear; no transcript text.
 #pragma once
@@ -30,7 +30,10 @@ struct Input {
 
 // Exposed for tests.
 [[nodiscard]] std::string escape_html(std::string_view s);
-/// 812 → "812", 81200 → "81,2 K", 3040000 → "3,04 M".
+/// English display name for an internal (Turkish) group id; "Bağlantı: x" → "Connector: x".
+/// Group ids stay stable so caches and *_usage.json summaries keep working.
+[[nodiscard]] std::string group_label(std::string_view name);
+/// 812 → "812", 81200 → "81.2 K", 3040000 → "3.04 M".
 [[nodiscard]] std::string format_tokens(double v);
 /// Aggregates group costs of several sessions; largest first, shares over the combined total.
 [[nodiscard]] breakdown::Result merge(const std::vector<const breakdown::Result*>& parts);

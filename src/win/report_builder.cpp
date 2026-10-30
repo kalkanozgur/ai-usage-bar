@@ -142,7 +142,7 @@ std::vector<Transcript> list_transcripts(std::size_t max_count) {
               [](const Transcript& a, const Transcript& b) { return a.mtime > b.mtime; });
     std::size_t keep = 0;
     while (keep < all.size() && keep < max_count && (keep == 0 || all[keep].mtime >= cutoff)) {
-        ++keep;  // always keep the newest one so "Son oturum" has data
+        ++keep;  // always keep the newest one so "Last session" has data
     }
     all.resize(keep);
     return all;
@@ -163,7 +163,7 @@ void load_summaries(const fs::path& dir, std::vector<breakdown::Result>& out) {
             continue;
         }
         if (auto r = breakdown::parse_summary_json(*text)) {
-            r->project = r->project.empty() ? "(bulut)" : r->project + " (bulut)";
+            r->project = r->project.empty() ? "(cloud)" : r->project + " (cloud)";
             out.push_back(std::move(*r));
         }
     }

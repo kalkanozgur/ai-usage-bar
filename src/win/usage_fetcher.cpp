@@ -75,12 +75,12 @@ FetchResult UsageFetcher::fetch() {
 std::optional<api::UsageSnapshot> UsageFetcher::fetch_oauth(std::string& err) {
     const auto text = read_file(credentials_path());
     if (!text) {
-        err = "OAuth: Claude Code girişi yok";
+        err = "OAuth: not signed in to Claude Code";
         return std::nullopt;
     }
     auto creds = credentials::parse(*text);
     if (!creds) {
-        err = "OAuth: kimlik dosyası okunamadı";
+        err = "OAuth: cannot read credentials file";
         return std::nullopt;
     }
 
@@ -94,7 +94,7 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_oauth(std::string& err) {
 
     if (credentials::needs_refresh(*creds, now_unix_ms(), kRefreshSkewMs)) {
         if (!may_refresh()) {
-            err = "OAuth: token süresi dolmuş";
+            err = "OAuth: token expired";
             return std::nullopt;
         }
         auto fresh = refresh_oauth(*creds, err);
@@ -119,7 +119,7 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_oauth(std::string& err) {
         if (resp->status == 200) {
             auto snap = api::parse_usage(resp->body);
             if (!snap) {
-                err = "OAuth: beklenmeyen yanıt";
+                err = "OAuth: unexpected response";
             }
             return snap;
         }
@@ -142,7 +142,7 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_oauth(std::string& err) {
 std::optional<credentials::OAuthCredentials> UsageFetcher::refresh_oauth(
     const credentials::OAuthCredentials& current, std::string& err) {
     std::string body = credentials::build_refresh_request(current.refresh_token, kClaudeCodeClientId);
-    std::string last_err = "erişilemedi";
+    std::string last_err = "unreachable";
 
     for (const wchar_t* host : kTokenHosts) {
         std::string terr;
@@ -160,12 +160,12 @@ std::optional<credentials::OAuthCredentials> UsageFetcher::refresh_oauth(
         wipe(body);
         if (resp->status != 200) {
             // 400 invalid_grant: refresh token revoked/expired → user must run `claude` and log in.
-            err = "OAuth yenileme: HTTP " + std::to_string(resp->status);
+            err = "OAuth refresh: HTTP " + std::to_string(resp->status);
             return std::nullopt;
         }
         const auto parsed = credentials::parse_refresh_response(resp->body);
         if (!parsed) {
-            err = "OAuth yenileme: beklenmeyen yanıt";
+            err = "OAuth refresh: unexpected response";
             return std::nullopt;
         }
         auto fresh = credentials::apply_refresh(current, *parsed, now_unix_ms());
@@ -195,14 +195,14 @@ std::optional<credentials::OAuthCredentials> UsageFetcher::refresh_oauth(
         return fresh;
     }
     wipe(body);
-    err = "OAuth yenileme: " + last_err;
+    err = "OAuth refresh: " + last_err;
     return std::nullopt;
 }
 
 std::optional<api::UsageSnapshot> UsageFetcher::fetch_session(std::string& err) {
     auto key = secret::load(paths_.session_key);
     if (!key || key->empty()) {
-        err = "Web: sessionKey kayıtlı değil";
+        err = "Web: no sessionKey saved";
         return std::nullopt;
     }
     if (!web_) {
@@ -228,12 +228,12 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_session(std::string& err) 
         }
         if (resp->status != 200) {
             err = "Web: HTTP " + std::to_string(resp->status) +
-                  (resp->status == 403 ? " (çerez geçersiz veya Cloudflare)" : "");
+                  (resp->status == 403 ? " (invalid cookie or Cloudflare)" : "");
             return std::nullopt;
         }
         const auto org = api::pick_chat_org(resp->body);
         if (!org) {
-            err = "Web: organizasyon bulunamadı";
+            err = "Web: organization not found";
             return std::nullopt;
         }
         org_id_ = to_wide(*org);
@@ -251,12 +251,12 @@ std::optional<api::UsageSnapshot> UsageFetcher::fetch_session(std::string& err) 
             org_id_.clear();  // stale cached org: rediscover next time
         }
         err = "Web: HTTP " + std::to_string(resp->status) +
-              (resp->status == 403 ? " (çerez geçersiz veya Cloudflare)" : "");
+              (resp->status == 403 ? " (invalid cookie or Cloudflare)" : "");
         return std::nullopt;
     }
     auto snap = api::parse_usage(resp->body);
     if (!snap) {
-        err = "Web: beklenmeyen yanıt";
+        err = "Web: unexpected response";
     }
     return snap;
 }

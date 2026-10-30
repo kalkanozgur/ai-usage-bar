@@ -103,20 +103,22 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 İlk çalıştırmada ayar dosyası `%LOCALAPPDATA%\ClaudeUsageBar\config.ini` oluşturulur. Fare kontrolleri:
 - **Sol tık:** grafik raporunu (`report.html`) oluşturur ve varsayılan tarayıcıda açar. Rapor yalnız tıklanınca hazırlanır; ayrıntı için [docs/usage-analiz.md](docs/usage-analiz.md).
 - **Sağ tık:** menüyü açar. En üst satır durum bilgisidir (kaynak, son güncelleme saati veya hata mesajı). Menüde şunlar var:
-  - Grafik raporunu aç
-  - Kullanım sayfasını aç (claude.ai)
-  - Şimdi yenile
-  - sessionKey'i panodan kaydet / sil
-  - Windows ile başlat (HKCU\…\Run kaydına yazar)
-  - Ayar dosyasını aç / Log dosyasını aç
-  - Çıkış
+  - Open usage report
+  - Open usage page (claude.ai)
+  - Refresh now
+  - Save sessionKey from clipboard / Delete saved sessionKey
+  - Start with Windows (HKCU\…\Run kaydına yazar)
+  - Open settings file / Open log file
+  - Exit
+
+  Arayüz (taskbar, menü, rapor) İngilizce; bu doküman Türkçe.
 
 ### Kimlik doğrulama
 
 | Sıra | Kaynak | Not |
 |---|---|---|
 | 1 | Claude Code OAuth (`%USERPROFILE%\.claude\.credentials.json`, `CLAUDE_CONFIG_DIR` destekli) | Süresi dolunca `refresh_token` ile yenilenir ve dosyaya atomik olarak geri yazılır (`ReplaceFileW`, ACL korunur). İlk yazmadan önce `.credentials.json.cub-backup` yedeği alınır. |
-| 2 | claude.ai `sessionKey` | Tarayıcıda claude.ai → F12 → Application → Cookies → `sessionKey` değerini kopyala, sonra widget menüsünden "panodan kaydet" seç. Değer DPAPI ile şifrelenir ve pano temizlenir. |
+| 2 | claude.ai `sessionKey` | Tarayıcıda claude.ai → F12 → Application → Cookies → `sessionKey` değerini kopyala, sonra widget menüsünden "Save sessionKey from clipboard" seç. Değer DPAPI ile şifrelenir ve pano temizlenir. |
 
 **Yenileme koruması:** Refresh token her yenilemede değişir. Bu yüzden widget, Claude Code CLI çalışırken token yenilemez; aksi halde CLI'ın elindeki token geçersizleşir ve `/login` gerekir. CLI açıksa token'ı zaten kendisi yeniler.
 
