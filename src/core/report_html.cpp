@@ -131,7 +131,7 @@ std::vector<const breakdown::Result*> sessions_in(const Input& in, const Range& 
 constexpr double kW = 720.0;
 constexpr double kH = 240.0;
 constexpr double kL = 44.0;   // left: y labels
-constexpr double kR = 64.0;   // right: direct labels
+constexpr double kR = 88.0;   // right: direct labels ("Oturum %100")
 constexpr double kT = 12.0;
 constexpr double kB = 26.0;   // bottom: x labels
 
