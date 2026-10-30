@@ -227,13 +227,20 @@ void App::on_tick() {
         if (snapshot_) {
             const bool stale = !last_error_.empty() ||
                                now_unix_ms() - last_ok_ms_ > 3LL * cfg_.refresh_sec * 1000;
-            lines = display::format(*snapshot_, now_unix_s(),
-                                    {cfg_.warn_pct, cfg_.crit_pct, cfg_.show_sonnet}, stale);
+            display::Options opt;
+            opt.warn_pct = cfg_.warn_pct;
+            opt.crit_pct = cfg_.crit_pct;
+            opt.show_sonnet = cfg_.show_sonnet;
+            opt.color_mode = cfg_.color_pace ? display::ColorMode::Pace
+                                             : display::ColorMode::Threshold;
+            opt.pace_margin = cfg_.pace_margin;
+            opt.pace_min_pct = cfg_.pace_min_pct;
+            lines = display::format(*snapshot_, now_unix_s(), opt, stale);
         } else if (!last_error_.empty()) {
-            lines = {"Claude \xE2\x9A\xA0", "hata \xC2\xB7 sa\xC4\x9F t\xC4\xB1k",
+            lines = {"Claude \xE2\x9A\xA0", "error \xC2\xB7 right-click",
                      display::Level::Dim, display::Level::Dim};
         } else {
-            lines = {"Claude", "y\xC3\xBCkleniyor\xE2\x80\xA6", display::Level::Dim,
+            lines = {"Claude", "loading\xE2\x80\xA6", display::Level::Dim,
                      display::Level::Dim};
         }
     }

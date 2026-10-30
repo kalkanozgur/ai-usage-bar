@@ -106,6 +106,27 @@ std::string format_remaining(std::int64_t seconds) {
     return buf;
 }
 
+std::string format_remaining_en(std::int64_t seconds) {
+    if (seconds < 0) {
+        seconds = 0;
+    }
+    const std::int64_t d = seconds / 86400;
+    const std::int64_t h = (seconds % 86400) / 3600;
+    const std::int64_t m = (seconds % 3600) / 60;
+
+    char buf[32];
+    if (d > 0) {
+        std::snprintf(buf, sizeof buf, "%lldd%02lldh", static_cast<long long>(d),
+                      static_cast<long long>(h));
+    } else if (h > 0) {
+        std::snprintf(buf, sizeof buf, "%lldh%02lldm", static_cast<long long>(h),
+                      static_cast<long long>(m));
+    } else {
+        std::snprintf(buf, sizeof buf, "%lldm", static_cast<long long>(m));
+    }
+    return buf;
+}
+
 std::string format_iso8601_utc(std::int64_t unix_seconds) {
     std::int64_t days = unix_seconds / 86400;
     std::int64_t rem = unix_seconds % 86400;

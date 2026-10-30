@@ -4,6 +4,7 @@
 
 using cub::time::days_from_civil;
 using cub::time::format_remaining;
+using cub::time::format_remaining_en;
 using cub::time::parse_iso8601;
 
 static_assert(days_from_civil(1970, 1, 1) == 0);
@@ -37,4 +38,11 @@ TEST(Time, FormatsRemaining) {
     EXPECT_EQ(format_remaining(12 * 60), "12dk");
     EXPECT_EQ(format_remaining(2 * 3600 + 14 * 60), "2s14dk");
     EXPECT_EQ(format_remaining(3 * 86400 + 5 * 3600 + 59), "3g05s");
+}
+
+TEST(Time, FormatsRemainingEnglish) {
+    EXPECT_EQ(format_remaining_en(-5), "0m");
+    EXPECT_EQ(format_remaining_en(12 * 60), "12m");
+    EXPECT_EQ(format_remaining_en(2 * 3600 + 14 * 60), "2h14m");
+    EXPECT_EQ(format_remaining_en(3 * 86400 + 5 * 3600 + 59), "3d05h");
 }

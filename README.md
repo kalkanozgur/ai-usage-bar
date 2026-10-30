@@ -3,14 +3,16 @@
 Claude abonelik kullanımını (5 saatlik oturum + haftalık limit) Windows taskbar'ında, bildirim alanının hemen solunda gösteren native bir widget.
 
 ```
-Oturum %23 · 2s14dk
- Hafta %41 · 3g05s
+Session 23% · 2h14m
+   Week 41% · 3d05h
 ```
 
 - **Hafif:** Tek `.exe`, statik CRT, ~2–3 MB RAM. Arka planda Python veya .NET çalışmaz.
 - **Sadece Claude Desktop açıkken çalışır:** Desktop kapalıyken gizlenir ve hiç ağ isteği atmaz.
 - **Otomatik kimlik:** Önce Claude Code'un OAuth token'ını kullanır, süresi dolmuşsa kendisi yeniler. Yedek olarak DPAPI ile şifrelenmiş `sessionKey` kullanır.
-- **Renkler:** %75 üstü turuncu, %90 üstü kırmızı. Veri alınamazsa gri. Açık/koyu temaya uyar.
+- **Renkler (tempoya göre):** Pencere bitmeden %100'e ulaşacak hızda harcıyorsan **turuncu**, %90 ve üstü **kırmızı**, yavaşsan yüksek yüzdede bile beyaz kalır. Her pencere ayrı renklenir. Veri alınamazsa gri. Açık/koyu temaya uyar.
+  - Turuncu kuralı: kullanım ≥ `pace_min_pct` (25) **ve** kullanım ≥ beklenen + `pace_margin` (5 puan). Beklenen = 100 × geçen süre / pencere (oturum 5 sa, hafta 7 gün).
+  - `color_mode=threshold` ile eski davranış: %75 turuncu, %90 kırmızı.
 
 ## Mimari
 
@@ -128,6 +130,10 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 | `manual_right_px` | -1 | ≥0 ise otomatik tespiti ezer |
 | `visibility` | `desktop_window` | `desktop_process`: tepsiye küçültülmüşken de göster. `always`: Desktop'tan bağımsız hep göster. |
 | `desktop_path_hint` | — | Desktop standart dışı bir klasöre kuruluysa exe yolunun bir parçası |
+| `color_mode` | `pace` | `pace` (tempoya göre) veya `threshold` (`warn_pct` eşiği) |
+| `pace_margin` | 5 | Turuncu için eşit dağılımın kaç puan önünde olmak gerekir |
+| `pace_min_pct` | 25 | Bunun altındaki kullanımda tempo uyarısı verilmez (pencere başı gürültüsü) |
+| `warn_pct` / `crit_pct` | 75 / 90 | `crit_pct` iki modda da kırmızı; `warn_pct` yalnız `threshold` modunda |
 | `refresh_sec` | 180 | Sorgu aralığı (en az 30 sn) |
 | `auth` | `auto` | `oauth` veya `session` ile tek kaynağa sabitlenir |
 | `oauth_refresh` | 1 | 0 yapılırsa token yenilemesi kapanır |
