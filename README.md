@@ -106,9 +106,13 @@ Hata ayıklama için `msvc-debug` preset'ini kullan.
 | `auth` | `auto` | `oauth` veya `session` ile tek kaynağa sabitlenir |
 | `oauth_refresh` | 1 | 0 yapılırsa token yenilemesi kapanır |
 
+## Kullanım analizi
+
+Limit zaman serisi (CSV) ve oturum dökümlerinden token dağılımı: format, formüller ve gruplar için [docs/usage-analiz.md](docs/usage-analiz.md).
+
 ## Güvenlik
 
-- Token, sessionKey ve istek başlıkları log'a yazılmaz. Kullanılan bellek tamponları `SecureZeroMemory` ile temizlenir.
+- Token, sessionKey ve istek başlıkları log'a yazılmaz. Kullanım analizi dökümlerden yalnız sayıları ve araç adlarını okur; mesaj metni saklanmaz. Kullanılan bellek tamponları `SecureZeroMemory` ile temizlenir.
 - `session.bin` DPAPI ile şifrelidir; başka bir kullanıcı veya başka bir makine çözemez.
 - `.gitignore` dosyası `session.bin`, `*.cub-backup` ve `*.log` dosyalarını hariç tutar.
 
