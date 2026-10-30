@@ -1,0 +1,17 @@
+# Build output
+/build/
+/install/
+/out/
+
+# IDE
+/.vs/
+*.user
+.vscode/*.log
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# Never commit secrets or runtime data
+session.bin
+*.cub-backup
+*.log
