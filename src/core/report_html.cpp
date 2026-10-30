@@ -173,9 +173,9 @@ void line_chart(std::string& o, const Input& in, const Range& r) {
                 return std::string("null");
             }
             std::array<char, 32> b{};
-            const auto r =
+            const auto res =
                 std::to_chars(b.data(), b.data() + b.size(), *v, std::chars_format::fixed, 1);
-            return std::string(b.data(), r.ptr);
+            return std::string(b.data(), res.ptr);
         };
         for (std::size_t i = 0; i < pts.size(); i += step) {
             if (pj.size() > 1) {
